@@ -1,23 +1,54 @@
 # Install
 
-Grove currently installs from source from this repository.
+Grove's primary install path is a one-line installer that downloads a GitHub Release tarball and installs into `~/.local`.
 
-The planned first consumer release path is GitHub Releases plus an installer script, but that installer is not implemented yet. Homebrew is intentionally not the first-release path.
+Homebrew is intentionally not the first-release path.
 
 ## Before You Start
 
-- Platform: macOS
-- Build toolchain: Rust and Cargo
+- Platform: Apple Silicon macOS for the release installer
+- Build toolchain: Rust and Cargo only for the source-build fallback
 - Intended terminal: iTerm2 (recommended for full bridge and inline-graphics behavior)
-- Canonical bridge path: `bridge/grove_bridge.py` through iTerm2 AutoLaunch
+- Canonical bridge path: iTerm2 AutoLaunch running Grove's installed `grove_bridge.py`
 - Separate shell integration is not required
 
 Outside iTerm2, Grove still runs as a local TUI, but bridge targeting and inline graphics fall back cleanly instead of trying to emulate iTerm2-only behavior.
 
+## Install From A GitHub Release
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh
+```
+
+Install a specific tagged release:
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.0
+```
+
+Run the installer non-interactively with the approved defaults:
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --yes
+```
+
+Installer behavior:
+
+- installs `grove` to `~/.local/bin/grove`
+- installs companion assets under `~/.local/share/grove/`
+- prompts before wiring the iTerm2 AutoLaunch bridge, defaulting to `Yes`
+- prompts before optional Mermaid helper setup, defaulting to `No`
+- prints a PATH hint if `~/.local/bin` is not already available in new shells
+
+The installer requires a published GitHub Release asset. If you are working from the repo before the first tagged release exists, use the source-build fallback below.
+
+## Source-Build Fallback
+
 If you do not already have Rust and Cargo, install them first from:
 https://www.rust-lang.org/tools/install
-
-## Install Grove Today
 
 ```sh
 git clone https://github.com/hbruss/grove.git
@@ -27,6 +58,8 @@ cargo build --release
 ```
 
 ## Enable Bridge Targeting In iTerm2
+
+If you answered `Yes` to the installer's bridge prompt, this is already done for you.
 
 From the repo root, create the AutoLaunch directory if needed, then copy or symlink the bridge script into it:
 
@@ -62,10 +95,12 @@ Grove's intended tree presentation uses Nerd Font glyphs for disclosure arrows, 
 
 ### `beautiful-mermaid`
 
-- The source checkout carries the repo-local helper contract under `tools/mermaid/`.
+- Release installs place the helper files under `~/.local/share/grove/mermaid/`.
+- Source checkouts carry the repo-local helper contract under `tools/mermaid/`.
 - It is optional.
 - It is not a standalone enablement path.
 - In the current runtime it only participates alongside `mmdc`; do not treat it as a baseline dependency.
+- In a release install, the installer can run the optional dependency setup for you.
 - In a source checkout, install the optional helper dependency with:
 
 ```sh
@@ -85,28 +120,10 @@ Grove does not require a separate iTerm shell-integration install.
 
 The runtime emits iTerm2 user variables directly, and the bridge reads session metadata through the iTerm2 Python API. If you already use iTerm2 shell integration, Grove does not depend on it.
 
-## Planned Next Install Path (Not Implemented Yet)
-
-The planned first consumer distribution story is:
-
-- GitHub Releases hosting the macOS build
-- an installer script as the guided setup path
-- optional installer steps for Mermaid extras
-- no Homebrew-first requirement
-
-That release installer should own:
-
-- placing the `grove` binary
-- wiring `bridge/grove_bridge.py` into iTerm2 AutoLaunch
-- offering optional Mermaid setup for `mmdc`
-- offering optional helper setup for `beautiful-mermaid`
-
-Today, the repo checkout is still source-build-first.
-
 ## Troubleshooting
 
 - `bridge: offline`
-  - Confirm the bridge script is in iTerm2 AutoLaunch, then restart iTerm2.
+  - Confirm the bridge prompt was accepted or the bridge script is in iTerm2 AutoLaunch, then restart iTerm2.
 - AI/editor picker opens but shows no useful targets
   - Confirm Grove is running inside iTerm2 and the other panes are also iTerm2 sessions.
 - Mermaid shows raw source

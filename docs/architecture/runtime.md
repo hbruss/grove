@@ -244,15 +244,20 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 
 ## Install And Dependency Contract
 
+- the canonical public install path is `scripts/install.sh`, which downloads `grove-aarch64-apple-darwin.tar.gz` from GitHub Releases and installs into `~/.local`
+- the installer currently supports Apple Silicon macOS only, accepts `--version <tag>` and `--yes`, and keeps its prompts explicit instead of silently changing other tools
 - source builds currently use `cargo build --release`, which produces `target/release/grove`
-- the canonical live bridge path is iTerm2 AutoLaunch running `bridge/grove_bridge.py`; `scripts/run_bridge_dev.sh` remains a dev-only shell path
+- source builds remain the fallback and developer path, and they are still the only install path until the first tagged release asset exists
+- the canonical live bridge path is iTerm2 AutoLaunch running Grove's installed `grove_bridge.py`; `scripts/run_bridge_dev.sh` remains a dev-only shell path
+- the installer prompts before wiring the iTerm2 AutoLaunch bridge and defaults that prompt to `Yes`
 - Grove does not require a separate iTerm shell-integration install; the runtime emits iTerm2 user variables directly and the bridge reads session metadata through the iTerm2 Python API
 - iTerm2-only behavior includes live bridge targeting, Mermaid inline-image presentation, and static image inline preview; outside iTerm2 Grove keeps the TUI usable and falls back to warnings, raw source, or metadata summaries
 - Nerd Font rendering is recommended for the intended tree presentation; without it the UI remains functional but the glyph-heavy tree styling degrades
 - Mermaid rich rendering is optional and requires `mmdc` on `PATH`
+- the installer prompts before optional Mermaid helper setup and defaults that prompt to `No`
 - the repo-local `beautiful-mermaid` helper under `tools/mermaid/` is optional and only participates alongside `mmdc`; it is not a baseline dependency, and source checkouts install it with `npm install` from `tools/mermaid/`
 - static raster image preview needs no extra renderer beyond iTerm2, but only supports local `.png`, `.jpg`, `.jpeg`, `.gif`, and `.webp` files that stay within the preview budgets
-- the first consumer distribution path is GitHub Releases plus an installer script; Homebrew is not the primary install path for the first release
+- Homebrew is not the primary install path for the first release
 
 ## Safety Semantics
 

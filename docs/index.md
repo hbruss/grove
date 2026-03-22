@@ -16,10 +16,12 @@ Current implementation status: the repo has a runnable ratatui shell with shallo
 
 ## Install Contract
 
-- Grove is source-build-first in the current checkout.
-- The canonical live bridge path is iTerm2 AutoLaunch running `bridge/grove_bridge.py`.
+- The canonical public install path is `scripts/install.sh`, which downloads a GitHub Release tarball into `~/.local`.
+- Source builds remain the fallback and developer path, and they are still the only install path until the first tagged release asset exists.
+- The canonical live bridge path is iTerm2 AutoLaunch running Grove's installed `grove_bridge.py`.
+- The installer prompts before wiring the iTerm2 bridge and defaults that prompt to `Yes`.
 - Grove does not require a separate iTerm shell-integration install.
 - Nerd Font rendering is recommended for the intended tree styling, but remains optional.
-- Mermaid rendering via `mmdc` and the repo-local `beautiful-mermaid` helper remain optional.
+- Mermaid rendering via `mmdc` and the repo-local `beautiful-mermaid` helper remain optional, and the installer defaults that prompt to `No`.
 - Inline image preview is iTerm2-only and falls back cleanly when graphics are unavailable or the file exceeds preview budgets.
-- The planned first consumer distribution path remains GitHub Releases plus an installer script, not Homebrew-first.
+- Homebrew is not the primary install path for the first release.
