@@ -247,7 +247,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - the canonical public install path is `scripts/install.sh`, which downloads `grove-aarch64-apple-darwin.tar.gz` from GitHub Releases and installs into `~/.local`
 - the installer currently supports Apple Silicon macOS only, accepts `--version <tag>` and `--yes`, and keeps its prompts explicit instead of silently changing other tools
 - source builds currently use `cargo build --release`, which produces `target/release/grove`
-- source builds remain the fallback and developer path, and they are still the only install path until the first tagged release asset exists
+- source builds remain the fallback and developer path
 - the canonical live bridge path is iTerm2 AutoLaunch running Grove's installed `grove_bridge.py`; `scripts/run_bridge_dev.sh` remains a dev-only shell path
 - the installer prompts before wiring the iTerm2 AutoLaunch bridge and defaults that prompt to `Yes`
 - Grove does not require a separate iTerm shell-integration install; the runtime emits iTerm2 user variables directly and the bridge reads session metadata through the iTerm2 Python API

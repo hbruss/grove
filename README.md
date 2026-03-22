@@ -21,7 +21,7 @@ curl --proto '=https' --tlsv1.2 -LsSf \
 
 The installer supports Apple Silicon macOS only, installs into `~/.local`, prompts before wiring the iTerm2 bridge with a default of `Yes`, and prompts for optional Mermaid helper dependencies with a default of `No`.
 
-The installer needs a published GitHub Release asset. If you are working from the repo before the first tagged release exists, use the source-build fallback in [docs/install.md](docs/install.md).
+The installer uses the latest published GitHub Release asset. If you are working directly from a checkout and want a local dev path instead, use the source-build fallback in [docs/install.md](docs/install.md).
 
 If you skip the installer's bridge prompt or use the source-build fallback, wire Grove's `grove_bridge.py` into iTerm2 AutoLaunch so `Ctrl+A`, `Ctrl+E`, and `Ctrl+Y` can target other panes.
 

@@ -12,12 +12,11 @@ Current implementation status: the repo has a runnable ratatui shell with shallo
 - [[architecture/index]]
 - [[architecture/runtime]]
 - [[architecture/repository]]
-- [[todo/2026-03-18-blueprint-execution-checklist]]
 
 ## Install Contract
 
 - The canonical public install path is `scripts/install.sh`, which downloads a GitHub Release tarball into `~/.local`.
-- Source builds remain the fallback and developer path, and they are still the only install path until the first tagged release asset exists.
+- Source builds remain the fallback and developer path.
 - The canonical live bridge path is iTerm2 AutoLaunch running Grove's installed `grove_bridge.py`.
 - The installer prompts before wiring the iTerm2 bridge and defaults that prompt to `Yes`.
 - Grove does not require a separate iTerm shell-integration install.

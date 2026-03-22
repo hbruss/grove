@@ -43,7 +43,7 @@ Installer behavior:
 - prompts before optional Mermaid helper setup, defaulting to `No`
 - prints a PATH hint if `~/.local/bin` is not already available in new shells
 
-The installer requires a published GitHub Release asset. If you are working from the repo before the first tagged release exists, use the source-build fallback below.
+The installer uses the latest published GitHub Release asset. If you are working directly from a checkout and want a local dev path instead, use the source-build fallback below.
 
 ## Source-Build Fallback
 

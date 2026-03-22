@@ -5,6 +5,9 @@
 .claude/
 .codex/
 .changelog/
+docs/ai/
+docs/todo/
+docs/plans/
 __pycache__/
 *.pyc
 bridge/__pycache__/
