@@ -1,0 +1,10 @@
+.DS_Store
+.tmp/
+.archive/
+.worktrees/
+.codex/
+.changelog/
+bridge/__pycache__/
+tools/mermaid/node_modules/
+rust_out
+target/

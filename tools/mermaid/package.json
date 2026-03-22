@@ -1,0 +1,14 @@
+{
+  "name": "grove-mermaid-helper",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18.19"
+  },
+  "scripts": {
+    "render:ascii": "node render_ascii.mjs"
+  },
+  "optionalDependencies": {
+    "beautiful-mermaid": "^1.1.3"
+  }
+}

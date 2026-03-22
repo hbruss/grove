@@ -1,0 +1,115 @@
+# Install
+
+Grove currently has two install stories:
+
+- Current checkout: build from source from this repository.
+- First consumer release: GitHub Releases plus an installer script.
+
+Homebrew is intentionally not the first-release path.
+
+## Baseline Contract
+
+- Platform: macOS.
+- Intended terminal: iTerm2.
+- Build toolchain: Rust and Cargo.
+- Canonical bridge path: `bridge/grove_bridge.py` through iTerm2 AutoLaunch.
+- Separate shell integration is not required.
+- Outside iTerm2, Grove still runs as a local TUI, but bridge targeting and inline graphics fall back cleanly instead of trying to emulate iTerm2-only behavior.
+
+## Build From Source
+
+Build Grove:
+
+```sh
+cargo build --release
+```
+
+Run the binary:
+
+```sh
+target/release/grove
+```
+
+`scripts/run_bridge_dev.sh` is still available as a local development helper, but it remains a dev path rather than the canonical install model and still needs an environment where the `iterm2` Python module is available.
+
+## Wire The Bridge Through iTerm2 AutoLaunch
+
+From the repo root, create the AutoLaunch directory if needed, then copy or symlink the bridge script into it:
+
+```sh
+mkdir -p "$HOME/Library/Application Support/iTerm2/Scripts/AutoLaunch"
+ln -sf "$PWD/bridge/grove_bridge.py" \
+  "$HOME/Library/Application Support/iTerm2/Scripts/AutoLaunch/grove_bridge.py"
+```
+
+Restart iTerm2 after wiring the bridge.
+
+Expected result:
+
+- Grove still starts normally even if the bridge is unavailable.
+- When the bridge is live, the status bar shows `bridge: online`.
+- `Ctrl+A`, `Ctrl+E`, and `Ctrl+Y` can then target other iTerm2 panes through the bridge.
+
+## Font Setup
+
+Grove's intended tree presentation uses Nerd Font glyphs for disclosure arrows, icons, and git dots.
+
+- Recommended: choose a Nerd Font in iTerm2.
+- Without a Nerd Font, Grove still works, but the current glyph-heavy tree styling will look degraded.
+
+## Optional Preview Tooling
+
+### Mermaid rich rendering
+
+- `mmdc` on `PATH` enables rendered Mermaid diagrams in iTerm2.
+- Without `mmdc`, Grove falls back to raw Mermaid source.
+
+### `beautiful-mermaid`
+
+- The current checkout already carries the repo-local helper contract under `tools/mermaid/`.
+- It is optional.
+- It is not a standalone enablement path.
+- In the current runtime it only participates alongside `mmdc`; do not treat it as a baseline dependency.
+
+### Static image preview
+
+- Supported local files: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`
+- No extra renderer install is required beyond iTerm2's inline-image support.
+- If graphics are unavailable, or the file exceeds Grove's preview budgets, preview falls back to a metadata summary.
+
+## Shell Integration
+
+Grove does not require a separate iTerm shell-integration install.
+
+The runtime emits iTerm2 user variables directly, and the bridge reads session metadata through the iTerm2 Python API. If you already use iTerm2 shell integration, Grove does not depend on it.
+
+## First Release Distribution Path
+
+Phase 10 freezes the first consumer distribution story as:
+
+- GitHub Releases hosting the macOS build
+- an installer script as the guided setup path
+- optional installer steps for Mermaid extras
+- no Homebrew-first requirement
+
+That release installer should own:
+
+- placing the `grove` binary
+- wiring `bridge/grove_bridge.py` into iTerm2 AutoLaunch
+- offering optional Mermaid setup for `mmdc`
+- offering optional helper setup for `beautiful-mermaid`
+
+The current repo checkout is still source-build-first.
+
+## Troubleshooting
+
+- `bridge: offline`
+  - Confirm the bridge script is in iTerm2 AutoLaunch, then restart iTerm2.
+- AI/editor picker opens but shows no useful targets
+  - Confirm Grove is running inside iTerm2 and the other panes are also iTerm2 sessions.
+- Mermaid shows raw source
+  - Check that `mmdc` is on `PATH`, and remember that inline Mermaid images are iTerm2-only.
+- Image preview shows metadata only
+  - Check that Grove is in iTerm2; very large files and oversized dimensions also fall back by design.
+- Tree glyphs look broken
+  - Switch iTerm2 to a Nerd Font.
