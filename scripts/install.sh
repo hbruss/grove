@@ -58,6 +58,8 @@ RELEASE_BASE_URL="${GROVE_INSTALL_RELEASE_BASE_URL:-https://github.com/$REPO_SLU
 NODE_BIN="${GROVE_INSTALL_NODE_BIN:-node}"
 NPM_BIN="${GROVE_INSTALL_NPM_BIN:-npm}"
 PATH_BLOCK_MARKER="# Added by Grove installer"
+PROMPT_INPUT_MODE="stdin"
+PROMPT_INPUT_PATH="${GROVE_INSTALL_PROMPT_INPUT:-}"
 
 if [ -n "$VERSION" ]; then
   ASSET_URL="$RELEASE_BASE_URL/download/$VERSION/$ASSET_NAME"
@@ -67,6 +69,9 @@ fi
 
 TMP_DIR="$(mktemp -d)"
 cleanup() {
+  if [ "$PROMPT_INPUT_MODE" = "fd3" ]; then
+    exec 3<&-
+  fi
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT INT TERM
@@ -92,7 +97,15 @@ prompt_choice() {
 
   while true; do
     printf '%s' "$prompt"
-    if ! IFS= read -r answer; then
+  if [ "$PROMPT_INPUT_MODE" = "tty" ]; then
+      if ! IFS= read -r answer </dev/tty; then
+        answer=""
+      fi
+    elif [ "$PROMPT_INPUT_MODE" = "fd3" ]; then
+      if ! IFS= read -r answer <&3; then
+        answer=""
+      fi
+    elif ! IFS= read -r answer; then
       answer=""
     fi
     case "$answer" in
@@ -114,6 +127,26 @@ prompt_choice() {
 
 ensure_dir() {
   mkdir -p "$1"
+}
+
+setup_prompt_input() {
+  if [ -n "$PROMPT_INPUT_PATH" ]; then
+    exec 3<"$PROMPT_INPUT_PATH"
+    PROMPT_INPUT_MODE="fd3"
+    return 0
+  fi
+
+  if [ -t 0 ]; then
+    PROMPT_INPUT_MODE="stdin"
+    return 0
+  fi
+
+  if (exec 3</dev/tty) 2>/dev/null; then
+    PROMPT_INPUT_MODE="tty"
+    return 0
+  fi
+
+  PROMPT_INPUT_MODE="stdin"
 }
 
 path_target() {
@@ -219,6 +252,8 @@ ensure_path_setup() {
   printf '%s\n' "Could not determine a supported login profile for $shell_path."
   manual_path_instructions
 }
+
+setup_prompt_input
 
 download_asset "$TMP_DIR/$ASSET_NAME"
 tar -xzf "$TMP_DIR/$ASSET_NAME" -C "$TMP_DIR"

@@ -11,14 +11,17 @@ RELEASES_ROOT="$TMP_DIR/releases"
 HOME_LATEST="$TMP_DIR/home-latest"
 HOME_VERSIONED="$TMP_DIR/home-versioned"
 HOME_ON_PATH="$TMP_DIR/home-on-path"
+HOME_PIPED="$TMP_DIR/home-piped"
 HOME_UNSUPPORTED="$TMP_DIR/home-unsupported"
 PREFIX_LATEST="$HOME_LATEST/.local"
 PREFIX_VERSIONED="$HOME_VERSIONED/.local"
 PREFIX_ON_PATH="$HOME_ON_PATH/.local"
+PREFIX_PIPED="$HOME_PIPED/.local"
 PREFIX_UNSUPPORTED="$HOME_UNSUPPORTED/.local"
 AUTOLAUNCH_LATEST="$TMP_DIR/autolaunch-latest"
 AUTOLAUNCH_VERSIONED="$TMP_DIR/autolaunch-versioned"
 AUTOLAUNCH_ON_PATH="$TMP_DIR/autolaunch-on-path"
+AUTOLAUNCH_PIPED="$TMP_DIR/autolaunch-piped"
 AUTOLAUNCH_UNSUPPORTED="$TMP_DIR/autolaunch-unsupported"
 EXPECTED_VERSION="v9.9.9"
 
@@ -77,6 +80,25 @@ test -f "$HOME_VERSIONED/.zprofile"
 grep -q '# Added by Grove installer' "$HOME_VERSIONED/.zprofile"
 grep -q 'export PATH="\$HOME/.local/bin:\$PATH"' "$HOME_VERSIONED/.zprofile"
 grep -q 'Added PATH setup to ' "$TMP_DIR/versioned.log"
+
+printf 'n\nn\ny\n' >"$TMP_DIR/piped-prompts.txt"
+cat "$ROOT_DIR/scripts/install.sh" | \
+GROVE_INSTALL_OS=Darwin \
+GROVE_INSTALL_ARCH=arm64 \
+GROVE_INSTALL_RELEASE_BASE_URL="file://$RELEASES_ROOT" \
+GROVE_INSTALL_HOME="$HOME_PIPED" \
+GROVE_INSTALL_PREFIX="$PREFIX_PIPED" \
+GROVE_INSTALL_AUTOLAUNCH_DIR="$AUTOLAUNCH_PIPED" \
+GROVE_INSTALL_PROMPT_INPUT="$TMP_DIR/piped-prompts.txt" \
+SHELL="/bin/zsh" \
+PATH="/usr/bin:/bin" \
+sh -s -- --version "$EXPECTED_VERSION" >"$TMP_DIR/piped.log"
+
+test -x "$PREFIX_PIPED/bin/grove"
+test ! -e "$AUTOLAUNCH_PIPED/grove_bridge.py"
+test ! -d "$PREFIX_PIPED/share/grove/mermaid/node_modules"
+test -f "$HOME_PIPED/.zprofile"
+grep -q 'Added PATH setup to ' "$TMP_DIR/piped.log"
 
 printf 'n\nn\n' | \
 GROVE_INSTALL_OS=Darwin \
