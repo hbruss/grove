@@ -22,6 +22,6 @@ Current implementation status: the repo has a runnable ratatui shell with shallo
 - The installer only offers a PATH profile edit when `~/.local/bin` is missing from `PATH`, and that prompt defaults to `No`.
 - Grove does not require a separate iTerm shell-integration install.
 - Nerd Font rendering is recommended for the intended tree styling, but remains optional.
-- Mermaid rendering via `mmdc` and the repo-local `beautiful-mermaid` helper remain optional, and the installer defaults that prompt to `No`.
+- Mermaid rendering via `mmdc` remains optional, and the optional `beautiful-mermaid` helper works from either the installed release layout or the repo-local source layout; the installer defaults that prompt to `No`.
 - Inline image preview is iTerm2-only and falls back cleanly when graphics are unavailable or the file exceeds preview budgets.
 - Homebrew is not the primary install path for the first release.

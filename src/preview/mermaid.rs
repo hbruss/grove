@@ -162,10 +162,12 @@ pub fn is_native_mermaid_extension(extension: Option<&str>) -> bool {
 }
 
 pub fn discover_renderers(config: &PreviewConfig) -> MermaidRenderDiscovery {
+    let current_exe = std::env::current_exe().ok();
     discover_renderers_with_path(
         config,
         Path::new(env!("CARGO_MANIFEST_DIR")),
         std::env::var_os("PATH"),
+        current_exe.as_deref(),
     )
 }
 
@@ -198,6 +200,7 @@ fn discover_renderers_with_path(
     config: &PreviewConfig,
     helper_root: &Path,
     path_env: Option<std::ffi::OsString>,
+    current_exe: Option<&Path>,
 ) -> MermaidRenderDiscovery {
     let rich_command = config
         .mermaid_command
@@ -206,7 +209,7 @@ fn discover_renderers_with_path(
         .or_else(|| resolve_command("mmdc", path_env.as_deref()));
 
     let ascii_helper_command = if rich_command.is_some() {
-        discover_ascii_helper(helper_root)
+        discover_ascii_helper(helper_root, current_exe)
     } else {
         None
     };
@@ -300,22 +303,28 @@ fn is_mermaid_info_string(info: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn discover_ascii_helper(helper_root: &Path) -> Option<PathBuf> {
-    let helper_path = helper_root
-        .join("tools")
-        .join("mermaid")
-        .join("render_ascii.mjs");
-    let package_manifest = helper_root
-        .join("tools")
-        .join("mermaid")
-        .join("node_modules")
-        .join("beautiful-mermaid")
-        .join("package.json");
-    if helper_path.is_file() && package_manifest.is_file() {
-        Some(helper_path)
-    } else {
-        None
+fn discover_ascii_helper(helper_root: &Path, current_exe: Option<&Path>) -> Option<PathBuf> {
+    let mut candidates = vec![helper_root.join("tools").join("mermaid")];
+
+    if let Some(prefix) = current_exe
+        .and_then(|exe| exe.parent())
+        .and_then(|bin_dir| bin_dir.parent())
+    {
+        candidates.push(prefix.join("share").join("grove").join("mermaid"));
     }
+
+    for helper_dir in candidates {
+        let helper_path = helper_dir.join("render_ascii.mjs");
+        let package_manifest = helper_dir
+            .join("node_modules")
+            .join("beautiful-mermaid")
+            .join("package.json");
+        if helper_path.is_file() && package_manifest.is_file() {
+            return Some(helper_path);
+        }
+    }
+
+    None
 }
 
 fn render_request(request: MermaidRenderRequest) -> MermaidRenderResponse {
@@ -571,6 +580,7 @@ mod tests {
             Some(path_env(&[path_mmdc
                 .parent()
                 .expect("bin dir should exist")])),
+            None,
         );
 
         assert_eq!(discovery.rich_command.as_deref(), Some(custom.as_path()));
@@ -591,6 +601,7 @@ mod tests {
             Some(path_env(&[path_mmdc
                 .parent()
                 .expect("bin dir should exist")])),
+            None,
         );
 
         assert_eq!(discovery.rich_command.as_deref(), Some(path_mmdc.as_path()));
@@ -620,7 +631,7 @@ mod tests {
         .expect("helper script should be written");
 
         let without_rich =
-            discover_renderers_with_path(&PreviewConfig::default(), root.as_path(), None);
+            discover_renderers_with_path(&PreviewConfig::default(), root.as_path(), None, None);
         assert_eq!(without_rich.ascii_helper_command, None);
         assert_eq!(without_rich.preferred_fallback(), MermaidDisplay::RawSource);
 
@@ -632,6 +643,7 @@ mod tests {
             Some(path_env(&[path_mmdc
                 .parent()
                 .expect("bin dir should exist")])),
+            None,
         );
         assert_eq!(with_rich.rich_command.as_deref(), Some(path_mmdc.as_path()));
         assert_eq!(
@@ -639,6 +651,47 @@ mod tests {
             Some(helper_root.join("render_ascii.mjs").as_path())
         );
         assert_eq!(with_rich.preferred_fallback(), MermaidDisplay::Pending);
+
+        fs::remove_dir_all(root).expect("temp root should be removed");
+    }
+
+    #[test]
+    fn discovery_finds_installed_release_helper_layout() {
+        let root = make_temp_dir("grove-mermaid-discovery-installed-helper");
+        let helper_dir = root.join("share").join("grove").join("mermaid");
+        fs::create_dir_all(helper_dir.join("node_modules").join("beautiful-mermaid"))
+            .expect("helper package dir should exist");
+        fs::write(
+            helper_dir
+                .join("node_modules")
+                .join("beautiful-mermaid")
+                .join("package.json"),
+            "{}",
+        )
+        .expect("package manifest should be written");
+        fs::write(helper_dir.join("render_ascii.mjs"), "console.log('ascii');")
+            .expect("helper script should be written");
+
+        let path_mmdc = root.join("bin").join("mmdc");
+        write_fake_executable(&path_mmdc);
+        let fake_exe = root.join("bin").join("grove");
+        write_fake_executable(&fake_exe);
+
+        let discovery = discover_renderers_with_path(
+            &PreviewConfig::default(),
+            root.join("unrelated-source-root").as_path(),
+            Some(path_env(&[path_mmdc
+                .parent()
+                .expect("bin dir should exist")])),
+            Some(fake_exe.as_path()),
+        );
+
+        assert_eq!(discovery.rich_command.as_deref(), Some(path_mmdc.as_path()));
+        assert_eq!(
+            discovery.ascii_helper_command.as_deref(),
+            Some(helper_dir.join("render_ascii.mjs").as_path())
+        );
+        assert_eq!(discovery.preferred_fallback(), MermaidDisplay::Pending);
 
         fs::remove_dir_all(root).expect("temp root should be removed");
     }

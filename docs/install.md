@@ -25,7 +25,7 @@ Install a specific tagged release:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.0
+  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.1
 ```
 
 Run the installer non-interactively with the default answers (`Yes` for bridge wiring, `No` for Mermaid helper setup, and `No` for PATH profile setup):
@@ -102,6 +102,8 @@ Grove's intended tree presentation uses Nerd Font glyphs for disclosure arrows, 
 - It is optional.
 - It is not a standalone enablement path.
 - In the current runtime it only participates alongside `mmdc`; do not treat it as a baseline dependency.
+- The release binary discovers the installed helper layout directly; source builds discover the repo-local helper layout.
+- The helper still runs through `node` at runtime.
 - In a release install, the installer can run the optional dependency setup for you.
 - In a source checkout, install the optional helper dependency with:
 
@@ -130,7 +132,7 @@ Optional PATH profile setup is separate from iTerm shell integration. Grove only
 - AI/editor picker opens but shows no useful targets
   - Confirm Grove is running inside iTerm2 and the other panes are also iTerm2 sessions.
 - Mermaid shows raw source
-  - Check that `mmdc` is on `PATH`, and remember that inline Mermaid images are iTerm2-only.
+  - Check that `mmdc` is on `PATH`, that `node` is available if you expect the optional `beautiful-mermaid` fallback, and remember that inline Mermaid images are iTerm2-only.
 - Image preview shows metadata only
   - Check that Grove is in iTerm2; very large files and oversized dimensions also fall back by design.
 - Tree glyphs look broken

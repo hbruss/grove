@@ -256,7 +256,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - Nerd Font rendering is recommended for the intended tree presentation; without it the UI remains functional but the glyph-heavy tree styling degrades
 - Mermaid rich rendering is optional and requires `mmdc` on `PATH`
 - the installer prompts before optional Mermaid helper setup and defaults that prompt to `No`
-- the repo-local `beautiful-mermaid` helper under `tools/mermaid/` is optional and only participates alongside `mmdc`; it is not a baseline dependency, and source checkouts install it with `npm install` from `tools/mermaid/`
+- the optional `beautiful-mermaid` helper participates only alongside `mmdc`; release installs discover it under `~/.local/share/grove/mermaid/`, source checkouts discover it under `tools/mermaid/`, and it still runs through `node` at runtime
 - static raster image preview needs no extra renderer beyond iTerm2, but only supports local `.png`, `.jpg`, `.jpeg`, `.gif`, and `.webp` files that stay within the preview budgets
 - Homebrew is not the primary install path for the first release
 
@@ -278,7 +278,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - HTML files still preview as raw source. Grove does not attempt inline browser rendering in the preview panel.
 - Preview selection is Grove-managed and line-based. Native terminal drag selection and snippet-send from preview are still out of scope.
 - Mermaid rendering is selected-target-only. Native `.mmd` / `.mermaid` files and the first fenced Mermaid block in a Markdown document can render through `mmdc` in iTerm2, while supported local raster images use the separate selected-file image pipeline.
-- The optional `beautiful-mermaid` ASCII fallback is implemented through the repo-local helper contract, and the helper dependency can be installed under `tools/mermaid/` in a source checkout.
+- The optional `beautiful-mermaid` ASCII fallback is implemented through the shared helper contract: release installs discover it under `~/.local/share/grove/mermaid/`, source checkouts discover it under `tools/mermaid/`, and source checkouts install the dependency with `npm install` from `tools/mermaid/`.
 - YAML files still use plain-text preview. Rich YAML parsing is deferred until the parser choice is frozen.
 - Closed roots are not watched. External changes under a pinned-but-closed root do not surface until that root is opened again.
 
