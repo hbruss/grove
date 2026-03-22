@@ -22,4 +22,4 @@ Current implementation status: the repo has a runnable ratatui shell with shallo
 - Nerd Font rendering is recommended for the intended tree styling, but remains optional.
 - Mermaid rendering via `mmdc` and the repo-local `beautiful-mermaid` helper remain optional.
 - Inline image preview is iTerm2-only and falls back cleanly when graphics are unavailable or the file exceeds preview budgets.
-- The frozen first consumer distribution path is GitHub Releases plus an installer script, not Homebrew-first.
+- The planned first consumer distribution path remains GitHub Releases plus an installer script, not Homebrew-first.

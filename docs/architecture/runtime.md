@@ -250,7 +250,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - iTerm2-only behavior includes live bridge targeting, Mermaid inline-image presentation, and static image inline preview; outside iTerm2 Grove keeps the TUI usable and falls back to warnings, raw source, or metadata summaries
 - Nerd Font rendering is recommended for the intended tree presentation; without it the UI remains functional but the glyph-heavy tree styling degrades
 - Mermaid rich rendering is optional and requires `mmdc` on `PATH`
-- the repo-local `beautiful-mermaid` helper under `tools/mermaid/` is optional and only participates alongside `mmdc`; it is not a baseline dependency
+- the repo-local `beautiful-mermaid` helper under `tools/mermaid/` is optional and only participates alongside `mmdc`; it is not a baseline dependency, and source checkouts install it with `npm install` from `tools/mermaid/`
 - static raster image preview needs no extra renderer beyond iTerm2, but only supports local `.png`, `.jpg`, `.jpeg`, `.gif`, and `.webp` files that stay within the preview budgets
 - the first consumer distribution path is GitHub Releases plus an installer script; Homebrew is not the primary install path for the first release
 
@@ -272,7 +272,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - HTML files still preview as raw source. Grove does not attempt inline browser rendering in the preview panel.
 - Preview selection is Grove-managed and line-based. Native terminal drag selection and snippet-send from preview are still out of scope.
 - Mermaid rendering is selected-target-only. Native `.mmd` / `.mermaid` files and the first fenced Mermaid block in a Markdown document can render through `mmdc` in iTerm2, while supported local raster images use the separate selected-file image pipeline.
-- The optional `beautiful-mermaid` ASCII fallback is implemented through the repo-local helper contract, and the helper dependency is installed under `tools/mermaid/` in the current checkout.
+- The optional `beautiful-mermaid` ASCII fallback is implemented through the repo-local helper contract, and the helper dependency can be installed under `tools/mermaid/` in a source checkout.
 - YAML files still use plain-text preview. Rich YAML parsing is deferred until the parser choice is frozen.
 - Closed roots are not watched. External changes under a pinned-but-closed root do not surface until that root is opened again.
 

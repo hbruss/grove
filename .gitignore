@@ -2,8 +2,11 @@
 .tmp/
 .archive/
 .worktrees/
+.claude/
 .codex/
 .changelog/
+__pycache__/
+*.pyc
 bridge/__pycache__/
 tools/mermaid/node_modules/
 rust_out

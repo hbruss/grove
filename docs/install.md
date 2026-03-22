@@ -1,38 +1,32 @@
 # Install
 
-Grove currently has two install stories:
+Grove currently installs from source from this repository.
 
-- Current checkout: build from source from this repository.
-- First consumer release: GitHub Releases plus an installer script.
+The planned first consumer release path is GitHub Releases plus an installer script, but that installer is not implemented yet. Homebrew is intentionally not the first-release path.
 
-Homebrew is intentionally not the first-release path.
+## Before You Start
 
-## Baseline Contract
+- Platform: macOS
+- Build toolchain: Rust and Cargo
+- Intended terminal: iTerm2 (recommended for full bridge and inline-graphics behavior)
+- Canonical bridge path: `bridge/grove_bridge.py` through iTerm2 AutoLaunch
+- Separate shell integration is not required
 
-- Platform: macOS.
-- Intended terminal: iTerm2.
-- Build toolchain: Rust and Cargo.
-- Canonical bridge path: `bridge/grove_bridge.py` through iTerm2 AutoLaunch.
-- Separate shell integration is not required.
-- Outside iTerm2, Grove still runs as a local TUI, but bridge targeting and inline graphics fall back cleanly instead of trying to emulate iTerm2-only behavior.
+Outside iTerm2, Grove still runs as a local TUI, but bridge targeting and inline graphics fall back cleanly instead of trying to emulate iTerm2-only behavior.
 
-## Build From Source
+If you do not already have Rust and Cargo, install them first from:
+https://www.rust-lang.org/tools/install
 
-Build Grove:
+## Install Grove Today
 
 ```sh
+git clone https://github.com/hbruss/grove.git
+cd grove
 cargo build --release
+./target/release/grove
 ```
 
-Run the binary:
-
-```sh
-target/release/grove
-```
-
-`scripts/run_bridge_dev.sh` is still available as a local development helper, but it remains a dev path rather than the canonical install model and still needs an environment where the `iterm2` Python module is available.
-
-## Wire The Bridge Through iTerm2 AutoLaunch
+## Enable Bridge Targeting In iTerm2
 
 From the repo root, create the AutoLaunch directory if needed, then copy or symlink the bridge script into it:
 
@@ -50,28 +44,36 @@ Expected result:
 - When the bridge is live, the status bar shows `bridge: online`.
 - `Ctrl+A`, `Ctrl+E`, and `Ctrl+Y` can then target other iTerm2 panes through the bridge.
 
-## Font Setup
+`scripts/run_bridge_dev.sh` is still available as a local development helper, but it remains a dev path rather than the canonical install model and still needs an environment where the `iterm2` Python module is available.
+
+## Optional Extras
+
+### Nerd Font
 
 Grove's intended tree presentation uses Nerd Font glyphs for disclosure arrows, icons, and git dots.
 
 - Recommended: choose a Nerd Font in iTerm2.
 - Without a Nerd Font, Grove still works, but the current glyph-heavy tree styling will look degraded.
 
-## Optional Preview Tooling
-
-### Mermaid rich rendering
+### Mermaid Rich Rendering
 
 - `mmdc` on `PATH` enables rendered Mermaid diagrams in iTerm2.
 - Without `mmdc`, Grove falls back to raw Mermaid source.
 
 ### `beautiful-mermaid`
 
-- The current checkout already carries the repo-local helper contract under `tools/mermaid/`.
+- The source checkout carries the repo-local helper contract under `tools/mermaid/`.
 - It is optional.
 - It is not a standalone enablement path.
 - In the current runtime it only participates alongside `mmdc`; do not treat it as a baseline dependency.
+- In a source checkout, install the optional helper dependency with:
 
-### Static image preview
+```sh
+cd tools/mermaid
+npm install
+```
+
+### Static Image Preview
 
 - Supported local files: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`
 - No extra renderer install is required beyond iTerm2's inline-image support.
@@ -83,9 +85,9 @@ Grove does not require a separate iTerm shell-integration install.
 
 The runtime emits iTerm2 user variables directly, and the bridge reads session metadata through the iTerm2 Python API. If you already use iTerm2 shell integration, Grove does not depend on it.
 
-## First Release Distribution Path
+## Planned Next Install Path (Not Implemented Yet)
 
-Phase 10 freezes the first consumer distribution story as:
+The planned first consumer distribution story is:
 
 - GitHub Releases hosting the macOS build
 - an installer script as the guided setup path
@@ -99,7 +101,7 @@ That release installer should own:
 - offering optional Mermaid setup for `mmdc`
 - offering optional helper setup for `beautiful-mermaid`
 
-The current repo checkout is still source-build-first.
+Today, the repo checkout is still source-build-first.
 
 ## Troubleshooting
 
