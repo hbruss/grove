@@ -28,7 +28,7 @@ curl --proto '=https' --tlsv1.2 -LsSf \
   https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.0
 ```
 
-Run the installer non-interactively with the approved defaults:
+Run the installer non-interactively with the default answers (`Yes` for bridge wiring, `No` for Mermaid helper setup, and `No` for PATH profile setup):
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf \
@@ -41,7 +41,9 @@ Installer behavior:
 - installs companion assets under `~/.local/share/grove/`
 - prompts before wiring the iTerm2 AutoLaunch bridge, defaulting to `Yes`
 - prompts before optional Mermaid helper setup, defaulting to `No`
-- prints a PATH hint if `~/.local/bin` is not already available in new shells
+- if `~/.local/bin` is missing from `PATH`, offers to add it to a supported shell profile, defaulting to `No`
+- if `~/.local/bin` is already on `PATH`, leaves shell profiles alone
+- if PATH profile setup is skipped or the shell is unsupported, prints manual PATH steps instead of guessing
 
 The installer uses the latest published GitHub Release asset. If you are working directly from a checkout and want a local dev path instead, use the source-build fallback below.
 
@@ -119,6 +121,7 @@ npm install
 Grove does not require a separate iTerm shell-integration install.
 
 The runtime emits iTerm2 user variables directly, and the bridge reads session metadata through the iTerm2 Python API. If you already use iTerm2 shell integration, Grove does not depend on it.
+Optional PATH profile setup is separate from iTerm shell integration. Grove only offers it when `~/.local/bin` is missing from `PATH`, and skipped or unsupported-shell cases fall back to printed manual instructions.
 
 ## Troubleshooting
 

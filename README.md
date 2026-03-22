@@ -19,7 +19,7 @@ curl --proto '=https' --tlsv1.2 -LsSf \
   https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.0
 ```
 
-The installer supports Apple Silicon macOS only, installs into `~/.local`, prompts before wiring the iTerm2 bridge with a default of `Yes`, and prompts for optional Mermaid helper dependencies with a default of `No`.
+The installer supports Apple Silicon macOS only, installs into `~/.local`, prompts before wiring the iTerm2 bridge with a default of `Yes`, prompts before optional Mermaid helper dependencies with a default of `No`, and, only when `~/.local/bin` is missing from `PATH`, offers to add it to a supported shell profile with a default of `No`. If profile setup is skipped or the shell is unsupported, the installer prints manual PATH steps instead.
 
 The installer uses the latest published GitHub Release asset. If you are working directly from a checkout and want a local dev path instead, use the source-build fallback in [docs/install.md](docs/install.md).
 

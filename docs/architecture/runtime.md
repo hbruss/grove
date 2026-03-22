@@ -250,6 +250,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - source builds remain the fallback and developer path
 - the canonical live bridge path is iTerm2 AutoLaunch running Grove's installed `grove_bridge.py`; `scripts/run_bridge_dev.sh` remains a dev-only shell path
 - the installer prompts before wiring the iTerm2 AutoLaunch bridge and defaults that prompt to `Yes`
+- the installer only offers a PATH profile edit when `~/.local/bin` is missing from `PATH`, targets the detected supported login profile, and defaults that prompt to `No`
 - Grove does not require a separate iTerm shell-integration install; the runtime emits iTerm2 user variables directly and the bridge reads session metadata through the iTerm2 Python API
 - iTerm2-only behavior includes live bridge targeting, Mermaid inline-image presentation, and static image inline preview; outside iTerm2 Grove keeps the TUI usable and falls back to warnings, raw source, or metadata summaries
 - Nerd Font rendering is recommended for the intended tree presentation; without it the UI remains functional but the glyph-heavy tree styling degrades

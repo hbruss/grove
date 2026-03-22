@@ -57,6 +57,7 @@ AUTOLAUNCH_DIR="${GROVE_INSTALL_AUTOLAUNCH_DIR:-$HOME_DIR/Library/Application Su
 RELEASE_BASE_URL="${GROVE_INSTALL_RELEASE_BASE_URL:-https://github.com/$REPO_SLUG/releases}"
 NODE_BIN="${GROVE_INSTALL_NODE_BIN:-node}"
 NPM_BIN="${GROVE_INSTALL_NPM_BIN:-npm}"
+PATH_BLOCK_MARKER="# Added by Grove installer"
 
 if [ -n "$VERSION" ]; then
   ASSET_URL="$RELEASE_BASE_URL/download/$VERSION/$ASSET_NAME"
@@ -115,6 +116,110 @@ ensure_dir() {
   mkdir -p "$1"
 }
 
+path_target() {
+  if [ "$BIN_DIR" = "$HOME_DIR/.local/bin" ]; then
+    printf '%s\n' '$HOME/.local/bin'
+  else
+    printf '%s\n' "$BIN_DIR"
+  fi
+}
+
+path_target_display() {
+  if [ "$BIN_DIR" = "$HOME_DIR/.local/bin" ]; then
+    printf '%s\n' '~/.local/bin'
+  else
+    printf '%s\n' "$BIN_DIR"
+  fi
+}
+
+path_export_line() {
+  target="$(path_target)"
+  printf 'export PATH="%s:$PATH"\n' "$target"
+}
+
+manual_path_instructions() {
+  printf '%s\n' "Add this line to your login profile:"
+  path_export_line
+}
+
+path_on_path() {
+  case ":${PATH:-}:" in
+    *:"$BIN_DIR":*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+detect_login_profile() {
+  shell_path="${SHELL:-}"
+  shell_name="$(basename "$shell_path" 2>/dev/null || printf '%s' "$shell_path")"
+
+  case "$shell_name" in
+    zsh)
+      printf '%s\n' "$HOME_DIR/.zprofile"
+      ;;
+    bash)
+      printf '%s\n' "$HOME_DIR/.bash_profile"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+profile_has_path_block() {
+  profile_path="$1"
+  [ -f "$profile_path" ] && grep -Fq "$PATH_BLOCK_MARKER" "$profile_path"
+}
+
+append_path_block() {
+  profile_path="$1"
+  profile_dir="$(dirname "$profile_path")"
+  target="$(path_target)"
+  ensure_dir "$profile_dir"
+
+  if [ -f "$profile_path" ] && [ -s "$profile_path" ]; then
+    printf '\n' >>"$profile_path"
+  fi
+
+  {
+    printf '%s\n' "$PATH_BLOCK_MARKER"
+    printf '%s\n' 'case ":$PATH:" in'
+    printf '  *:"%s":*) ;;\n' "$target"
+    printf '  *) export PATH="%s:$PATH" ;;\n' "$target"
+    printf '%s\n' 'esac'
+  } >>"$profile_path"
+}
+
+ensure_path_setup() {
+  if path_on_path; then
+    return 0
+  fi
+
+  if profile_path="$(detect_login_profile)"; then
+    if profile_has_path_block "$profile_path"; then
+      printf '%s\n' "PATH setup is already present in $profile_path"
+      return 0
+    fi
+
+    if prompt_choice "Add $(path_target_display) to your PATH in $profile_path? [y/N] " "no"; then
+      append_path_block "$profile_path"
+      printf '%s\n' "Added PATH setup to $profile_path"
+    else
+      printf '%s\n' "Skipped PATH profile update."
+      manual_path_instructions
+    fi
+    return 0
+  fi
+
+  shell_path="${SHELL:-unknown shell}"
+  printf '%s\n' "Could not determine a supported login profile for $shell_path."
+  manual_path_instructions
+}
+
 download_asset "$TMP_DIR/$ASSET_NAME"
 tar -xzf "$TMP_DIR/$ASSET_NAME" -C "$TMP_DIR"
 
@@ -163,12 +268,6 @@ else
   printf '%s\n' "Skipped optional Mermaid helper installation."
 fi
 
-case ":${PATH:-}:" in
-  *:"$BIN_DIR":*)
-    ;;
-  *)
-    printf '%s\n' "Add $BIN_DIR to your PATH if it is not already available in new shells."
-    ;;
-esac
+ensure_path_setup
 
 printf '%s\n' "Done."

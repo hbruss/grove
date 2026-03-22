@@ -19,6 +19,7 @@ Current implementation status: the repo has a runnable ratatui shell with shallo
 - Source builds remain the fallback and developer path.
 - The canonical live bridge path is iTerm2 AutoLaunch running Grove's installed `grove_bridge.py`.
 - The installer prompts before wiring the iTerm2 bridge and defaults that prompt to `Yes`.
+- The installer only offers a PATH profile edit when `~/.local/bin` is missing from `PATH`, and that prompt defaults to `No`.
 - Grove does not require a separate iTerm shell-integration install.
 - Nerd Font rendering is recommended for the intended tree styling, but remains optional.
 - Mermaid rendering via `mmdc` and the repo-local `beautiful-mermaid` helper remain optional, and the installer defaults that prompt to `No`.
