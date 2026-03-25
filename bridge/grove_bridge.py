@@ -288,7 +288,7 @@ class Iterm2SessionStore:
         for window in app.windows:
             for tab in window.tabs:
                 tab_title = await safe_async_get_variable(tab, "title")
-                for session in tab.sessions:
+                for session in tab.all_sessions:
                     role = await normalize_session_variable(session, "user.groveRole")
                     instance_id = await normalize_session_variable(
                         session, "user.groveInstance"

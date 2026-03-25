@@ -297,6 +297,108 @@ class BridgeControllerTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(fake_session.calls, [("hello", True)])
 
+    async def test_iterm2_session_store_list_sessions_includes_minimized_sessions(self):
+        class FakeSession:
+            def __init__(
+                self,
+                session_id: str,
+                title: str,
+                *,
+                role: str | None = None,
+                job_name: str | None = None,
+                command_line: str | None = None,
+                cwd: str | None = None,
+                instance_id: str | None = None,
+            ) -> None:
+                self.session_id = session_id
+                self._values = {
+                    "presentationName": title,
+                    "name": title,
+                    "user.groveRole": role,
+                    "jobName": job_name,
+                    "commandLine": command_line,
+                    "path": cwd,
+                    "user.groveInstance": instance_id,
+                }
+
+            async def async_get_variable(self, name: str) -> str | None:
+                return self._values.get(name)
+
+        class FakeTab:
+            def __init__(
+                self,
+                tab_id: str,
+                title: str,
+                *,
+                sessions: list[FakeSession],
+                minimized_sessions: list[FakeSession],
+            ) -> None:
+                self.tab_id = tab_id
+                self.sessions = sessions
+                self.all_sessions = sessions + minimized_sessions
+                self._title = title
+
+            async def async_get_variable(self, name: str) -> str | None:
+                if name == "title":
+                    return self._title
+                return None
+
+        class FakeWindow:
+            def __init__(self, window_id: str, tabs: list[FakeTab]) -> None:
+                self.window_id = window_id
+                self.tabs = tabs
+
+        class FakeApp:
+            def __init__(self, windows: list[FakeWindow]) -> None:
+                self.windows = windows
+
+        visible = FakeSession(
+            "visible-1",
+            "Claude",
+            role="ai",
+            job_name="claude",
+            command_line="claude",
+            cwd="/repo",
+        )
+        minimized = FakeSession(
+            "minimized-1",
+            "Codex",
+            job_name="codex",
+            command_line="codex",
+            cwd="/repo",
+        )
+        fake_app = FakeApp(
+            [
+                FakeWindow(
+                    "window-1",
+                    [
+                        FakeTab(
+                            "tab-1",
+                            "Workspace",
+                            sessions=[visible],
+                            minimized_sessions=[minimized],
+                        )
+                    ],
+                )
+            ]
+        )
+        original_iterm2 = grove_bridge.iterm2
+
+        async def fake_async_get_app(connection):
+            return fake_app
+
+        grove_bridge.iterm2 = SimpleNamespace(async_get_app=fake_async_get_app)
+
+        try:
+            store = Iterm2SessionStore(connection=object())
+            sessions = await store.list_sessions()
+        finally:
+            grove_bridge.iterm2 = original_iterm2
+
+        self.assertEqual([session.session_id for session in sessions], ["visible-1", "minimized-1"])
+        self.assertEqual(sessions[1].location_hint.tab_id, "tab-1")
+        self.assertEqual(sessions[1].location_hint.tab_title, "Workspace")
+
 
 if __name__ == "__main__":
     unittest.main()

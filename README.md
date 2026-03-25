@@ -16,7 +16,7 @@ Versioned install:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.3
+  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.4
 ```
 
 The installer supports Apple Silicon macOS only, installs into `~/.local`, prompts before wiring the iTerm2 bridge with a default of `Yes`, prompts before optional Mermaid helper dependencies with a default of `No`, and, only when `~/.local/bin` is missing from `PATH`, offers to add it to a supported shell profile with a default of `No`. If profile setup is skipped or the shell is unsupported, the installer prints manual PATH steps instead.
