@@ -11,6 +11,7 @@ pub enum Action {
     ToggleSelect,
     FocusPathFilter,
     OpenContentSearch,
+    TogglePreviewVisibility,
     SetContextModePreview,
     SetContextModeDiff,
     SetContextModeBlame,

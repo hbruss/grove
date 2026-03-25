@@ -155,6 +155,15 @@ pub fn visible_text_from_cache(
     Text::from(visible_lines)
 }
 
+pub fn metadata_text(header: &PreviewHeader, inner_width: u16) -> Text<'static> {
+    let lines = preview_header_lines(header, inner_width.max(1));
+    if lines.is_empty() {
+        Text::from("Metadata unavailable")
+    } else {
+        Text::from(lines)
+    }
+}
+
 pub fn rendered_text_range_from_cache(
     cache: Option<&PreviewRenderCache>,
     start: usize,
@@ -197,16 +206,8 @@ fn lines(
     inner_width: u16,
 ) -> (Vec<Line<'static>>, Option<PreviewImageSlot>) {
     let mut lines = Vec::new();
-    let header_lines = preview_header_lines(&payload.header, inner_width);
-    let has_header = !header_lines.is_empty();
-    if has_header {
-        lines.extend(header_lines);
-    }
 
     if let Some(image) = payload.image.as_ref() {
-        if has_header {
-            lines.push(Line::default());
-        }
         let (image_lines, image_slot) = render_image_preview(image, lines.len());
         lines.extend(image_lines);
         if lines.is_empty() {
@@ -216,9 +217,6 @@ fn lines(
     }
 
     if let Some(mermaid) = payload.mermaid.as_ref() {
-        if has_header {
-            lines.push(Line::default());
-        }
         let (mermaid_lines, image_slot) = render_mermaid_preview(mermaid, lines.len());
         lines.extend(mermaid_lines);
         if lines.is_empty() {
@@ -236,7 +234,7 @@ fn lines(
             lines.push(Line::default());
         }
         lines.extend(render_markdown(markdown, inner_width.max(1) as usize));
-    } else if payload.lines.is_empty() && !has_header {
+    } else if payload.lines.is_empty() {
         lines.push(Line::from("Preview unavailable"));
     }
 
@@ -755,9 +753,6 @@ fn preview_header_lines(header: &PreviewHeader, inner_width: u16) -> Vec<Line<'s
     }
     if !header.metadata.is_empty() {
         lines.extend(preview_metadata_lines(&header.metadata, inner_width));
-    }
-    if !lines.is_empty() {
-        lines.push(header_band_line(Vec::new(), inner_width));
     }
     lines
 }

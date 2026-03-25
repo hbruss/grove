@@ -460,6 +460,16 @@ impl App {
         changed
     }
 
+    pub fn clear_active_path_filter_and_keep_focus(&mut self) -> Result<bool> {
+        let Some(tab) = self.tabs.get_mut(self.active_tab) else {
+            return Ok(false);
+        };
+
+        self.focus = Focus::PathFilter;
+        tab.path_filter.active = true;
+        tab.set_path_filter_query("")
+    }
+
     pub fn focus_next_panel(&mut self) -> bool {
         let Some(tab) = self.tabs.get_mut(self.active_tab) else {
             return false;
@@ -467,7 +477,8 @@ impl App {
 
         let next_focus = match self.focus {
             Focus::Tree => Focus::Roots,
-            Focus::Roots => Focus::Preview,
+            Focus::Roots if tab.preview_visible => Focus::Preview,
+            Focus::Roots => Focus::Tree,
             Focus::Preview => Focus::Tree,
             Focus::PathFilter => Focus::Tree,
             _ => Focus::Tree,
@@ -600,6 +611,12 @@ impl App {
             .is_some_and(|tab| tab.multi_select.active)
     }
 
+    pub fn active_preview_visible(&self) -> bool {
+        self.tabs
+            .get(self.active_tab)
+            .is_none_or(|tab| tab.preview_visible)
+    }
+
     pub fn active_multi_select_count(&self) -> usize {
         self.tabs
             .get(self.active_tab)
@@ -654,6 +671,17 @@ impl App {
             return false;
         };
         tab.toggle_selected_path_in_multi_select()
+    }
+
+    pub fn toggle_active_preview_visibility(&mut self) -> bool {
+        let Some(tab) = self.tabs.get_mut(self.active_tab) else {
+            return false;
+        };
+        let changed = tab.toggle_preview_visibility();
+        if changed && !tab.preview_visible && self.focus == Focus::Preview {
+            self.focus = Focus::Tree;
+        }
+        changed
     }
 
     pub fn active_git_summary(&self) -> Option<GitRepoSummary> {
@@ -1921,6 +1949,7 @@ pub struct TabState {
     pub mode: ContextMode,
     pub tree: TreeState,
     pub multi_select: MultiSelectState,
+    pub preview_visible: bool,
     pub preview: PreviewState,
     pub image_runtime: ImagePreviewRuntime,
     pub mermaid_runtime: MermaidPreviewRuntime,
@@ -1953,6 +1982,7 @@ impl TabState {
             mode: ContextMode::Preview,
             tree,
             multi_select: MultiSelectState::default(),
+            preview_visible: true,
             preview: PreviewState::default(),
             image_runtime: ImagePreviewRuntime::default(),
             mermaid_runtime: MermaidPreviewRuntime::default(),
@@ -1972,6 +2002,11 @@ impl TabState {
 
     pub fn multi_selected_paths(&self) -> Vec<PathBuf> {
         self.multi_select.selected_paths.iter().cloned().collect()
+    }
+
+    pub fn toggle_preview_visibility(&mut self) -> bool {
+        self.preview_visible = !self.preview_visible;
+        true
     }
 
     pub fn toggle_multi_select_mode(&mut self) -> bool {

@@ -10,6 +10,16 @@ pub fn action_bar_entries(app: &App) -> Vec<ActionDescriptor> {
         descriptor(Action::OpenContentSearch, "search", "Ctrl+F", true),
         descriptor(Action::OpenCommandPalette, "commands", "Ctrl+P", true),
         descriptor(
+            Action::TogglePreviewVisibility,
+            if app.active_preview_visible() {
+                "hide preview"
+            } else {
+                "show preview"
+            },
+            "v",
+            true,
+        ),
+        descriptor(
             Action::SetContextModeDiff,
             "diff",
             "d",
@@ -65,9 +75,10 @@ pub const fn command_palette_section_label(action: &Action) -> &'static str {
         | Action::CloseTab => "Root",
         Action::StageSelectedPath | Action::UnstageSelectedPath => "Git",
         Action::SetAiTarget | Action::SetEditorTarget => "Targets",
-        Action::OpenContentSearch | Action::SetContextModeDiff | Action::SetContextModePreview => {
-            "View"
-        }
+        Action::OpenContentSearch
+        | Action::TogglePreviewVisibility
+        | Action::SetContextModeDiff
+        | Action::SetContextModePreview => "View",
         _ => "Commands",
     }
 }
@@ -251,6 +262,16 @@ fn target_entries() -> Vec<ActionDescriptor> {
 fn view_entries(app: &App) -> Vec<ActionDescriptor> {
     vec![
         descriptor(Action::OpenContentSearch, "search", "Content search", true),
+        descriptor(
+            Action::TogglePreviewVisibility,
+            if app.active_preview_visible() {
+                "hide preview"
+            } else {
+                "show preview"
+            },
+            "Toggle preview pane visibility",
+            true,
+        ),
         descriptor(
             Action::SetContextModeDiff,
             "diff",

@@ -7,6 +7,10 @@ use crate::app::App;
 use crate::state::Focus;
 
 pub fn render(frame: &mut Frame, area: Rect, app: &App) {
+    if area.width < 2 || area.height < 2 {
+        return;
+    }
+
     let (title, content) = app
         .tabs
         .get(app.active_tab)

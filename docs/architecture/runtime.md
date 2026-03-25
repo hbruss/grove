@@ -7,10 +7,12 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - `src/main.rs` calls `grove::bootstrap::run()`
 - `src/bootstrap.rs` enters terminal mode in a fail-fast path
 - the runtime draws the shell through ratatui before entering the input loop
-- the production input loop handles `Up`, `Down`, `Left`, `Right`, `Shift+Up`, `Shift+Down`, `Tab`, `/`, printable path-filter input, `Backspace`, `Ctrl+H`, `Ctrl+G`, `Ctrl+A`, `Ctrl+E`, `Ctrl+R`, `Ctrl+Y`, `Ctrl+F`, `Ctrl+P`, `Ctrl+T`, `Space`, `b`, `c`, `d`, `m`, `p`, `s`, `u`, `x`, `Enter`, `Esc`, `PageUp`, `PageDown`, `Home`, `End`, `o`, wheel scrolling, preview left-click, and `q`
+- the production input loop handles `Up`, `Down`, `Left`, `Right`, `Shift+Up`, `Shift+Down`, `Tab`, `/`, printable path-filter input, `Backspace`, `Ctrl+H`, `Ctrl+G`, `Ctrl+A`, `Ctrl+E`, `Ctrl+R`, `Ctrl+Y`, `Ctrl+F`, `Ctrl+P`, `Ctrl+T`, `Space`, `b`, `c`, `d`, `m`, `p`, `s`, `u`, `v`, `x`, `Enter`, `Esc`, `PageUp`, `PageDown`, `Home`, `End`, `o`, wheel scrolling, preview left-click, and `q`
 - `Right` lazily expands the selected directory one level at a time, or opens the selected file in the configured editor in the current pane
 - `Left` collapses the selected expanded directory or selects its parent row
 - `/` focuses the path filter
+- `Esc` in path-filter focus clears a non-empty query and leaves focus in the filter box for the next query
+- `Esc` in path-filter focus with an already-empty query returns focus to the tree
 - `Tab` cycles focus between the tree, roots navigator, and preview panels
 - `o` opens the selected file externally through the system opener
 - `Ctrl+A` opens the AI target picker
@@ -27,6 +29,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - `c` in preview focus copies the selected rendered preview lines, or the current preview line when no explicit range exists
 - `d` switches the preview panel into unstaged git diff mode only when the selected file has cached unstaged or untracked changes; otherwise Grove stays in preview and surfaces a status message
 - `p` returns the preview panel to normal file/directory preview mode
+- `v` toggles preview-pane visibility; when hidden, the metadata panel stays visible, the tree spans the reclaimed width below the header row, and `Tab` skips preview focus until the pane is shown again
 - `s` stages the selected file through the git backend
 - `u` unstages the selected file through the git backend
 - `x` clears the active multi-select batch without leaving tree focus
@@ -71,7 +74,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - when image graphics are unavailable, the file exceeds the preview budget, or decode/transcode fails, preview stays inside the TUI with a metadata-summary fallback instead of blocking or crashing
 - `.json` files now pretty-print in the preview panel
 - binary files now render a bounded hex and ASCII summary
-- preview content now renders a compact metadata lockup band with path, explicit file size, timestamps, permissions, and owner/group data before the body content
+- preview metadata now renders in a standalone `Metadata` panel with path, explicit file size, timestamps, permissions, and owner/group data, while the `Preview` panel renders body content only
 - preview content now tracks its own `scroll_row` and can be navigated while preview focus is active
 - preview focus now owns a `cursor_line` plus an optional contiguous line-range selection in rendered-line coordinates
 - preview left-click positions the preview cursor on the clicked rendered line and focuses preview
@@ -117,7 +120,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - `src/app.rs` owns per-tab content-search query, generation, worker/runtime handles, result payloads, and selected-hit state
 - `src/app.rs` caches repo discovery and repo-relative git status state per tab, rolls git badges onto loaded tree nodes, and invalidates preview payloads when mode or git mutation changes require a fresh render
 - `src/app.rs` owns roots-navigator selection, config-backed pinned-root persistence, direct active-root pin toggling, root-tab activation/promotion, collision-safe root labels, preview diff-availability checks, and post-file-op tree refresh/reveal semantics
-- `src/app.rs` caches preview payloads as a panel title plus a structured metadata header, plain body lines, and optional markdown, image, or Mermaid preview contracts
+- `src/app.rs` caches preview payloads as a panel title plus a structured metadata header, plain body lines, and optional markdown, image, or Mermaid preview contracts; the shell now renders that header through a dedicated metadata panel
 - `src/app.rs` caches rendered preview lines separately from preview payloads so runtime scroll operations can reuse them
 - `src/app.rs` owns per-tab image-preview request-key generation, bounded background image worker state, stale-result rejection, and inline-image payload state for the active selected image
 - `src/app.rs` owns per-tab Mermaid discovery, request-key generation, background render worker state, stale-result rejection, and inline-image payload state for the active preview target

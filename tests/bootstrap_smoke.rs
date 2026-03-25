@@ -567,7 +567,7 @@ fn runtime_tab_focus_can_switch_back_to_the_previous_root_tab() {
 }
 
 #[test]
-fn runtime_seam_focuses_path_filter_and_preserves_query_on_escape() {
+fn runtime_escape_clears_non_empty_path_filter_and_keeps_focus() {
     let root = make_temp_dir("grove-bootstrap-path-filter");
     fs::create_dir_all(root.join("alpha")).expect("should create alpha dir");
     fs::write(root.join("alpha").join("nested.txt"), "nested").expect("should create nested file");
@@ -575,14 +575,14 @@ fn runtime_seam_focuses_path_filter_and_preserves_query_on_escape() {
 
     let backend = TestBackend::new(120, 36);
     let mut terminal = Terminal::new(backend).expect("test terminal should build");
-    let mut input = Cursor::new(vec![b'/', b'n', b'e', b's', b't', 0x1b, b'q']);
+    let mut input = Cursor::new(vec![b'/', b'n', b'e', b's', b't', 0x1b]);
     let mut app = App::default();
     app.tabs[0] = grove::app::TabState::new(root.clone());
 
     let result = bootstrap::run_with_terminal_and_reader(&mut terminal, &mut input, &mut app);
     assert!(result.is_ok(), "{result:?}");
-    assert_eq!(app.focus, grove::state::Focus::Tree);
-    assert_eq!(app.tabs[0].path_filter.query, "nest");
+    assert_eq!(app.focus, grove::state::Focus::PathFilter);
+    assert_eq!(app.tabs[0].path_filter.query, "");
 
     let rendered = terminal
         .backend()
@@ -591,8 +591,28 @@ fn runtime_seam_focuses_path_filter_and_preserves_query_on_escape() {
         .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
-    assert!(rendered.contains("nest"));
-    assert!(rendered.contains("nested.txt"));
+    assert!(rendered.contains("alpha"));
+    assert!(rendered.contains("beta.txt"));
+    assert!(!rendered.contains("nested.txt"));
+
+    fs::remove_dir_all(root).expect("temp root should be removed");
+}
+
+#[test]
+fn runtime_escape_on_empty_path_filter_returns_focus_to_tree() {
+    let root = make_temp_dir("grove-bootstrap-path-filter-empty-escape");
+    fs::write(root.join("alpha.txt"), "alpha").expect("should create alpha file");
+
+    let backend = TestBackend::new(120, 36);
+    let mut terminal = Terminal::new(backend).expect("test terminal should build");
+    let mut input = Cursor::new(vec![b'/', 0x1b]);
+    let mut app = App::default();
+    app.tabs[0] = grove::app::TabState::new(root.clone());
+
+    let result = bootstrap::run_with_terminal_and_reader(&mut terminal, &mut input, &mut app);
+    assert!(result.is_ok(), "{result:?}");
+    assert_eq!(app.focus, grove::state::Focus::Tree);
+    assert_eq!(app.tabs[0].path_filter.query, "");
 
     fs::remove_dir_all(root).expect("temp root should be removed");
 }
@@ -1272,7 +1292,7 @@ fn runtime_ctrl_h_backspaces_inside_filter_without_toggling_hidden() {
 
     let backend = TestBackend::new(120, 36);
     let mut terminal = Terminal::new(backend).expect("test terminal should build");
-    let mut input = Cursor::new(vec![b'/', b'a', b'b', 0x08, 0x1b, b'q']);
+    let mut input = Cursor::new(vec![b'/', b'a', b'b', 0x08]);
     let mut app = App::default();
     app.tabs[0] = TabState::new(root.clone());
     app.tabs[0].path_index.receiver = None;
@@ -1568,7 +1588,7 @@ fn runtime_o_appends_to_path_filter_query_without_external_open() {
 
     let backend = TestBackend::new(120, 36);
     let mut terminal = Terminal::new(backend).expect("test terminal should build");
-    let mut input = Cursor::new(vec![b'/', b'o', 0x1b, b'q']);
+    let mut input = Cursor::new(vec![b'/', b'o']);
     let mut app = App::default();
     app.tabs[0] = TabState::new(root.clone());
     app.tabs[0].path_index.receiver = None;
@@ -1926,7 +1946,7 @@ fn runtime_d_and_p_stay_literal_inside_path_filter() {
 
     let backend = TestBackend::new(120, 36);
     let mut terminal = Terminal::new(backend).expect("test terminal should build");
-    let mut input = Cursor::new(vec![b'/', b'd', b'p', 0x1b, b'q']);
+    let mut input = Cursor::new(vec![b'/', b'd', b'p']);
     let mut app = App::default();
     app.tabs[0] = TabState::new(root.clone());
     app.tabs[0].path_index.receiver = None;
@@ -1947,7 +1967,7 @@ fn runtime_s_and_u_stay_literal_inside_path_filter() {
 
     let backend = TestBackend::new(120, 36);
     let mut terminal = Terminal::new(backend).expect("test terminal should build");
-    let mut input = Cursor::new(vec![b'/', b's', b'u', 0x1b, b'q']);
+    let mut input = Cursor::new(vec![b'/', b's', b'u']);
     let mut app = App::default();
     app.tabs[0] = TabState::new(root.clone());
     app.tabs[0].path_index.receiver = None;
@@ -3142,6 +3162,65 @@ fn runtime_tab_can_focus_preview_panel() {
 }
 
 #[test]
+fn runtime_v_hides_preview_keeps_metadata_visible_and_returns_focus_to_tree() {
+    let root = make_temp_dir("grove-bootstrap-preview-hide");
+    fs::write(root.join("notes.txt"), "line 00\nline 01\n").expect("should create notes file");
+
+    let backend = TestBackend::new(120, 36);
+    let mut terminal = Terminal::new(backend).expect("test terminal should build");
+    let mut input = Cursor::new(vec![0x1b, b'[', b'B', 0x09, 0x09, b'v', b'q']);
+    let mut app = App::default();
+    app.tabs[0] = TabState::new(root.clone());
+    app.tabs[0].path_index.receiver = None;
+    app.tabs[0].path_index.status = grove::app::PathIndexStatus::Ready;
+
+    let result = bootstrap::run_with_terminal_and_reader(&mut terminal, &mut input, &mut app);
+    assert!(result.is_ok(), "{result:?}");
+    assert_eq!(app.focus, Focus::Tree);
+
+    let rendered = terminal
+        .backend()
+        .buffer()
+        .content
+        .iter()
+        .map(|cell| cell.symbol())
+        .collect::<String>();
+    assert!(rendered.contains("Metadata"));
+    assert!(!rendered.contains("line 00"));
+
+    fs::remove_dir_all(root).expect("temp root should be removed");
+}
+
+#[test]
+fn runtime_hidden_preview_layout_lets_tree_span_full_body_width() {
+    let root = make_temp_dir("grove-bootstrap-preview-width");
+    let long_name =
+        "alpha-preview-width-expansion-marker-visible-only-when-tree-spans-wide.txt";
+    fs::write(root.join(long_name), "wide\n").expect("should create wide-name file");
+
+    let backend = TestBackend::new(120, 36);
+    let mut terminal = Terminal::new(backend).expect("test terminal should build");
+    let mut input = Cursor::new(vec![0x1b, b'[', b'B', b'v', b'q']);
+    let mut app = App::default();
+    app.tabs[0] = TabState::new(root.clone());
+    app.tabs[0].path_index.receiver = None;
+    app.tabs[0].path_index.status = grove::app::PathIndexStatus::Ready;
+
+    let result = bootstrap::run_with_terminal_and_reader(&mut terminal, &mut input, &mut app);
+    assert!(result.is_ok(), "{result:?}");
+
+    let buffer = terminal.backend().buffer().clone();
+    let positions = ascii_text_positions(&buffer, "visible-only-when-tree-spans-wide")
+        .expect("expanded tree should expose the filename tail below the metadata band");
+    assert!(
+        positions.iter().any(|(row, _)| *row > 8),
+        "expected the long filename tail to render in the tree area after preview is hidden"
+    );
+
+    fs::remove_dir_all(root).expect("temp root should be removed");
+}
+
+#[test]
 fn runtime_roots_focus_can_activate_a_pinned_root_as_a_tab() {
     let root = make_temp_dir("grove-bootstrap-bookmark-root");
     fs::write(root.join("notes.txt"), "line 00\n").expect("should create notes file");
@@ -3488,10 +3567,7 @@ fn runtime_preview_page_down_scrolls_by_more_than_one_line() {
         .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
-    let expected_visible_line = format!(
-        "line {:02}",
-        app.tabs[0].preview.scroll_row.saturating_sub(4)
-    );
+    let expected_visible_line = format!("line {:02}", app.tabs[0].preview.scroll_row);
     assert!(
         rendered.contains(&expected_visible_line),
         "page-down preview should render a later body line, expected {expected_visible_line}"
@@ -4270,6 +4346,27 @@ fn cells_for_ascii_text<'a>(buffer: &'a Buffer, needle: &str) -> Option<Vec<&'a 
     }
 
     None
+}
+
+fn ascii_text_positions(buffer: &Buffer, needle: &str) -> Option<Vec<(usize, usize)>> {
+    let width = buffer.area.width as usize;
+    let mut positions = Vec::new();
+
+    for (row_index, row) in buffer.content.chunks(width).enumerate() {
+        let rendered = row.iter().map(|cell| cell.symbol()).collect::<String>();
+        let mut search_start = 0usize;
+        while let Some(offset) = rendered[search_start..].find(needle) {
+            let column = search_start + offset;
+            positions.push((row_index, column));
+            search_start = column + needle.len();
+        }
+    }
+
+    if positions.is_empty() {
+        None
+    } else {
+        Some(positions)
+    }
 }
 
 fn make_temp_dir(prefix: &str) -> std::path::PathBuf {

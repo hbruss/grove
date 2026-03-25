@@ -4,7 +4,8 @@ use grove::preview::model::{
     PreviewGeneration, PreviewHeader, PreviewMetadataItem, PreviewPayload, PreviewPresentation,
 };
 use grove::preview::render::{
-    PreviewRenderCache, line_count_from_cache, refresh_cache, visible_text_from_cache,
+    PreviewRenderCache, line_count_from_cache, metadata_text, refresh_cache,
+    visible_text_from_cache,
 };
 use ratatui::style::Color;
 
@@ -134,11 +135,11 @@ fn visible_text_from_cache_uses_cached_scroll_slice() {
         .map(|line| line.to_string())
         .collect::<Vec<_>>();
 
-    assert_eq!(visible, vec!["line 00".to_string(), "line 01".to_string()]);
+    assert_eq!(visible, vec!["line 03".to_string()]);
 }
 
 #[test]
-fn visible_text_from_cache_renders_preview_header_before_body() {
+fn visible_text_from_cache_renders_preview_body_without_metadata_header() {
     let payload = markdown_payload();
     let mut cache = None;
 
@@ -156,9 +157,9 @@ fn visible_text_from_cache_renders_preview_header_before_body() {
         .map(|line| line.to_string())
         .collect::<Vec<_>>();
 
-    assert!(visible[0].starts_with("/tmp/README.md"));
-    assert!(visible[1].starts_with("Type Markdown"));
-    assert!(visible[2].trim().is_empty());
+    assert!(visible[0].contains("Heading"));
+    assert!(visible[1].trim().is_empty());
+    assert!(visible[2].contains("Some paragraph text."));
 }
 
 #[test]
@@ -279,10 +280,12 @@ fn visible_text_from_cache_tints_preview_metadata_lockup() {
         80
     ));
 
-    let visible = visible_text_from_cache(cache.as_ref(), 0, 4, 0, None, false).lines;
+    let visible = metadata_text(&payload.header, 80).lines;
     let path_bg = visible[0].spans[0].style.bg;
     let metadata_bg = visible[1].spans[0].style.bg;
-    let body_bg = visible[3].spans[0].style.bg;
+    let body_bg = visible_text_from_cache(cache.as_ref(), 0, 1, 0, None, false).lines[0].spans[0]
+        .style
+        .bg;
 
     assert_eq!(path_bg, metadata_bg);
     assert_ne!(path_bg, Some(Color::Reset));

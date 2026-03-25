@@ -3,22 +3,30 @@ use ratatui::Frame;
 use crate::app::App;
 
 use super::{
-    action_bar, command_palette, content_search, dialog, layout, path_filter, preview, roots,
-    status_bar, tree,
+    action_bar, command_palette, content_search, dialog, layout, metadata, path_filter, preview,
+    roots, status_bar, tree,
 };
 
 pub fn render(frame: &mut Frame, app: &App) {
-    let split_ratio = app
+    let (split_ratio, preview_visible) = app
         .tabs
         .get(app.active_tab)
-        .map(|tab| tab.split_ratio)
-        .unwrap_or(0.40);
-    let areas = layout::compute(frame.area(), split_ratio, app.root_navigator_panel_height());
+        .map(|tab| (tab.split_ratio, tab.preview_visible))
+        .unwrap_or((0.40, true));
+    let areas = layout::compute(
+        frame.area(),
+        split_ratio,
+        app.root_navigator_panel_height(),
+        preview_visible,
+    );
 
     path_filter::render(frame, areas.path_filter, app);
     roots::render(frame, areas.roots, app);
     tree::render(frame, areas.tree, app);
-    preview::render(frame, areas.preview, app);
+    metadata::render(frame, areas.metadata, app);
+    if areas.preview.width > 0 && areas.preview.height > 0 {
+        preview::render(frame, areas.preview, app);
+    }
     action_bar::render(frame, areas.action_bar, app);
     status_bar::render(frame, areas.status_bar, app);
 

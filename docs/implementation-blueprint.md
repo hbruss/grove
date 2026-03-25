@@ -253,7 +253,7 @@ Rules:
 - `Tab` cycles Tree -> Preview -> PathFilter -> Tree.
 - `Shift+Tab` cycles backward.
 - Opening a modal or menu steals focus and restores it on close.
-- Path filter clears focus with `Esc` but does not wipe the query unless `Esc` is pressed twice or the clear button is clicked.
+- `Esc` in a non-empty path filter clears the query and keeps focus in the filter box; `Esc` on an already-empty filter returns focus to the tree.
 
 ### 7.3 Tree behavior
 

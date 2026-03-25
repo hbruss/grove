@@ -11,6 +11,7 @@ Install/setup details live in [[install]]. Runtime internals live in [[architect
 ## First Launch
 
 - `Tab` cycles focus between the tree, roots navigator, and preview.
+- When preview is hidden, `Tab` skips preview and cycles between tree and roots.
 - `/` jumps into the path filter.
 - `q` quits Grove.
 - Important: in the tree, `Right` is the open/edit key. `Enter` is mainly for overlays, search results, and roots focus.
@@ -31,6 +32,8 @@ Install/setup details live in [[install]]. Runtime internals live in [[architect
 - `Left` collapses the selected expanded directory or moves to the parent row.
 - `Right` expands the selected directory one level at a time.
 - `/` opens the path filter without mutating expansion state.
+- `Esc` in the path filter clears a non-empty query and keeps focus in the filter box so you can type the next one immediately.
+- `Esc` on an already-empty path filter returns focus to the tree.
 - `Ctrl+H` toggles hidden files.
 - Bare `Backspace` outside the filter is the same hidden-file toggle.
 - `Ctrl+G` toggles `.gitignore` filtering.
@@ -56,6 +59,9 @@ Install/setup details live in [[install]]. Runtime internals live in [[architect
 ## Preview Workflow
 
 - `Tab` into `Preview`.
+- `Metadata` is a dedicated framed panel above the preview content.
+- `v` hides or shows the preview pane.
+- When preview is hidden, the tree expands across the reclaimed width below the header panels and preview focus falls back to the tree.
 - `Up` / `Down`, `PageUp` / `PageDown`, `Home`, and `End` scroll the rendered preview.
 - `Shift+Up` / `Shift+Down` grows or shrinks a contiguous line selection.
 - `c` copies the selected preview lines, or the current line when no explicit range exists.
@@ -88,8 +94,9 @@ Install/setup details live in [[install]]. Runtime internals live in [[architect
 | Area | Key | Action |
 | --- | --- | --- |
 | Global | `q` | Quit Grove |
-| Global | `Tab` | Cycle focus between tree, roots, and preview |
+| Global | `Tab` | Cycle focus between tree, roots, and preview; skip preview when it is hidden |
 | Global | `/` | Focus the path filter |
+| Path filter | `Esc` | Clear the current query and stay focused; when already empty, return to the tree |
 | Visibility | `Ctrl+H` | Toggle hidden files |
 | Visibility | `Backspace` | Hidden-file toggle when focus is not in the path filter |
 | Visibility | `Ctrl+G` | Toggle `.gitignore` filtering |
@@ -110,6 +117,7 @@ Install/setup details live in [[install]]. Runtime internals live in [[architect
 | File open | `o` | Open the selected file through the system opener |
 | Search | `Ctrl+F` | Open content search |
 | Commands | `Ctrl+P` | Open the unified command surface |
+| View | `v` | Hide or show the preview pane |
 | Preview | `Up` / `Down` | Scroll the preview |
 | Preview | `PageUp` / `PageDown` | Scroll the preview by page |
 | Preview | `Home` / `End` | Jump to the top or bottom of the preview |

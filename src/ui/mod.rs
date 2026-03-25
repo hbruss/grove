@@ -3,6 +3,7 @@ pub mod command_palette;
 pub mod content_search;
 pub mod dialog;
 pub mod layout;
+pub mod metadata;
 pub mod path_filter;
 pub mod preview;
 pub mod root;

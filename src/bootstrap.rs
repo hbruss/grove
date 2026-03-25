@@ -624,6 +624,10 @@ where
                 if copy_active_preview_selection(terminal, app)? {
                     render_shell_once(terminal, app)?;
                 }
+            } else if ch == 'v' {
+                if app.toggle_active_preview_visibility() {
+                    render_shell_once(terminal, app)?;
+                }
             } else if ch == 'b' {
                 if toggle_bookmark_target(app)? {
                     render_shell_once(terminal, app)?;
@@ -673,10 +677,21 @@ where
             }
         }
         RuntimeInput::Escape => {
-            let changed = (app.focus == Focus::Tree && app.exit_active_multi_select_mode())
-                || (app.focus == Focus::Preview && app.clear_active_preview_selection())
-                || (app.focus == Focus::PathFilter && app.blur_path_filter())
-                || (app.focus == Focus::ContentSearch && app.close_active_content_search());
+            let changed = if app.focus == Focus::Tree {
+                app.exit_active_multi_select_mode()
+            } else if app.focus == Focus::Preview {
+                app.clear_active_preview_selection()
+            } else if app.focus == Focus::PathFilter {
+                if path_filter_query_is_empty(app) {
+                    app.blur_path_filter()
+                } else {
+                    app.clear_active_path_filter_and_keep_focus()?
+                }
+            } else if app.focus == Focus::ContentSearch {
+                app.close_active_content_search()
+            } else {
+                false
+            };
             if changed {
                 render_shell_once(terminal, app)?;
             }
@@ -1030,6 +1045,7 @@ where
         Action::SetAiTarget => open_target_picker(app, TargetRole::Ai, hooks),
         Action::SetEditorTarget => open_editor_target_picker_or_warn(app, hooks),
         Action::OpenContentSearch => Ok(app.open_active_content_search()),
+        Action::TogglePreviewVisibility => Ok(app.toggle_active_preview_visibility()),
         Action::NewFile => open_prompt_for_action(app, PromptDialogIntent::NewFile),
         Action::NewDirectory => open_prompt_for_action(app, PromptDialogIntent::NewDirectory),
         Action::Rename => open_prompt_for_action(app, PromptDialogIntent::Rename),
@@ -2613,6 +2629,7 @@ where
         shell_area,
         split_ratio,
         app.root_navigator_panel_height(),
+        app.active_preview_visible(),
     ))
 }
 
@@ -4617,7 +4634,7 @@ mod tests {
         .expect("preview copy should not fail");
 
         assert!(changed);
-        assert_eq!(copied.as_deref(), Some("line 00\nline 01"));
+        assert_eq!(copied.as_deref(), Some("line 04\nline 05"));
         assert_eq!(app.status.severity, StatusSeverity::Success);
         assert_eq!(app.status.message, "copied preview selection");
 

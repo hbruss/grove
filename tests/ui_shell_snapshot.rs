@@ -292,6 +292,41 @@ fn renders_preview_metadata_lockup_with_file_size() {
 }
 
 #[test]
+fn renders_preview_metadata_and_preview_panels() {
+    let root = make_temp_dir("grove-ui-preview-panels");
+    fs::write(root.join("alpha.txt"), "hello").expect("should create alpha file");
+
+    let backend = TestBackend::new(120, 36);
+    let mut terminal = Terminal::new(backend).expect("test terminal should build");
+    let mut app = App::default();
+    app.tabs[0] = TabState::new(root.clone());
+    assert!(
+        app.tabs[0]
+            .tree
+            .select_rel_path(PathBuf::from("alpha.txt").as_path())
+    );
+    let _ = app.refresh_active_preview();
+    let _ = app.refresh_active_preview_render_cache(60);
+
+    terminal
+        .draw(|frame| grove::ui::render(frame, &app))
+        .expect("shell should render");
+
+    let rendered = terminal
+        .backend()
+        .buffer()
+        .content
+        .iter()
+        .map(|cell| cell.symbol())
+        .collect::<String>();
+
+    assert!(rendered.contains("Metadata"));
+    assert!(rendered.contains("hello"));
+
+    fs::remove_dir_all(root).expect("temp root should be removed");
+}
+
+#[test]
 fn renders_preview_action_bar_hints_when_preview_is_focused() {
     let root = make_temp_dir("grove-ui-preview-action-hints");
     fs::write(root.join("alpha.txt"), "hello\nworld\n").expect("should create alpha file");
