@@ -143,7 +143,6 @@ class BridgeController:
                 session.to_summary()
                 for session in sessions
                 if session.session_id != sender.session_id
-                and session.normalized_role() != ROLE_GROVE
             ]
             return {"session_list": summaries}
 

@@ -123,6 +123,92 @@ class BridgeControllerTests(unittest.IsolatedAsyncioTestCase):
             },
         )
 
+    async def test_list_sessions_keeps_non_sender_sessions_with_stale_grove_role(self):
+        store = InMemorySessionStore(
+            [
+                BridgeSession(
+                    session_id="grove",
+                    title="Grove",
+                    role="grove",
+                    instance_id="instance-1",
+                    location_hint=SessionLocationHint(window_id="window-1", tab_id="tab-1"),
+                ),
+                BridgeSession(
+                    session_id="stale-grove",
+                    title="Primary (codex)",
+                    role="grove",
+                    job_name="codex",
+                    command_line="codex",
+                    cwd="/repo",
+                    instance_id="old-instance",
+                    location_hint=SessionLocationHint(
+                        window_id="window-1",
+                        tab_id="tab-1",
+                        window_title="Workspace",
+                        tab_title="Primary",
+                    ),
+                ),
+                BridgeSession(
+                    session_id="ai-1",
+                    title="Claude",
+                    role="ai",
+                    job_name="claude-code",
+                    command_line="claude",
+                    cwd="/repo",
+                    location_hint=SessionLocationHint(
+                        window_id="window-1",
+                        tab_id="tab-2",
+                        window_title="Workspace",
+                        tab_title="AI",
+                    ),
+                ),
+            ]
+        )
+        controller = BridgeController(store)
+
+        response = await controller.handle_envelope(
+            {"request_id": "req-stale", "command": {"list_sessions": {"instance_id": "instance-1"}}}
+        )
+
+        self.assertEqual(
+            response,
+            {
+                "request_id": "req-stale",
+                "response": {
+                    "session_list": [
+                        {
+                            "session_id": "stale-grove",
+                            "title": "Primary (codex)",
+                            "role": "grove",
+                            "job_name": "codex",
+                            "command_line": "codex",
+                            "cwd": "/repo",
+                            "location_hint": {
+                                "window_id": "window-1",
+                                "tab_id": "tab-1",
+                                "window_title": "Workspace",
+                                "tab_title": "Primary",
+                            },
+                        },
+                        {
+                            "session_id": "ai-1",
+                            "title": "Claude",
+                            "role": "ai",
+                            "job_name": "claude-code",
+                            "command_line": "claude",
+                            "cwd": "/repo",
+                            "location_hint": {
+                                "window_id": "window-1",
+                                "tab_id": "tab-2",
+                                "window_title": "Workspace",
+                                "tab_title": "AI",
+                            },
+                        },
+                    ]
+                },
+            },
+        )
+
     async def test_resolve_targets_prefers_same_tab_then_same_window(self):
         store = InMemorySessionStore(
             [
