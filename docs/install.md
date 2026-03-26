@@ -25,7 +25,7 @@ Install a specific tagged release:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.6
+  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.7
 ```
 
 Run the installer non-interactively with the default answers (`Yes` for bridge wiring, `No` for Mermaid helper setup, and `No` for PATH profile setup):
@@ -81,6 +81,31 @@ Expected result:
 
 `scripts/run_bridge_dev.sh` is still available as a local development helper, but it remains a dev path rather than the canonical install model and still needs an environment where the `iterm2` Python module is available.
 
+## Opt In Bridge Debug Logging
+
+The AutoLaunch bridge supports a permanent opt-in debug log driven by a config file:
+
+- config path: `~/.config/grove/bridge-debug.json`
+- log format: JSON Lines
+- default behavior: disabled when the config file is absent
+
+Minimal config:
+
+```json
+{
+  "path": "/Users/you/.config/grove/bridge.log",
+  "log_session_lists": true
+}
+```
+
+Notes:
+
+- `path` is required and points to the log file the bridge appends to.
+- `log_session_lists` is optional and defaults to `true`.
+- The bridge logs command receipt, sender resolution, picker include/exclude decisions, target resolution, role assignment, and send-text resolution without logging full text payloads.
+- Restart iTerm2 after creating or changing the config file because AutoLaunch reads the bridge logging config when the bridge starts.
+- If the config file exists but is invalid, the bridge fails fast on startup instead of guessing.
+
 ## Optional Extras
 
 ### Nerd Font
@@ -129,6 +154,8 @@ Optional PATH profile setup is separate from iTerm shell integration. Grove only
 
 - `bridge: offline`
   - Confirm the bridge prompt was accepted or the bridge script is in iTerm2 AutoLaunch, then restart iTerm2.
+- Need definitive bridge evidence
+  - Create `~/.config/grove/bridge-debug.json`, restart iTerm2, reproduce the issue, and inspect the configured JSONL log file.
 - AI/editor picker opens but shows no useful targets
   - Confirm Grove is running inside iTerm2 and the other panes are also iTerm2 sessions.
 - Mermaid shows raw source

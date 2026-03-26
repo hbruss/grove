@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -30,6 +32,60 @@ PICKER_TARGET_MARKERS = (
     "vim",
     "zed",
 )
+BRIDGE_DEBUG_CONFIG_RELATIVE_PATH = Path(".config/grove/bridge-debug.json")
+
+
+@dataclass(frozen=True)
+class BridgeDebugConfig:
+    path: Path
+    log_session_lists: bool = True
+
+
+class BridgeLogger:
+    def __init__(self, config: BridgeDebugConfig | None = None) -> None:
+        self._config = config
+        self._handle = None
+        self._write_failed = False
+        if config is None:
+            return
+        config.path.parent.mkdir(parents=True, exist_ok=True)
+        self._handle = config.path.open("a", encoding="utf-8")
+
+    @property
+    def enabled(self) -> bool:
+        return self._handle is not None and not self._write_failed
+
+    @property
+    def log_session_lists(self) -> bool:
+        return self.enabled and self._config is not None and self._config.log_session_lists
+
+    @property
+    def path(self) -> Path | None:
+        if self._config is None:
+            return None
+        return self._config.path
+
+    def log(self, event: str, **fields: Any) -> None:
+        if not self.enabled:
+            return
+        record = {"ts_ms": current_timestamp_ms(), "event": event, **fields}
+        try:
+            assert self._handle is not None
+            self._handle.write(json.dumps(record, sort_keys=True, separators=(",", ":")))
+            self._handle.write("\n")
+            self._handle.flush()
+        except OSError as exc:
+            self._write_failed = True
+            print(
+                f"grove bridge debug logging disabled after write failure: {exc}",
+                file=sys.stderr,
+            )
+
+    def close(self) -> None:
+        if self._handle is None:
+            return
+        self._handle.close()
+        self._handle = None
 
 
 @dataclass
@@ -128,20 +184,33 @@ class InMemorySessionStore:
 
 
 class BridgeController:
-    def __init__(self, store: SessionStore) -> None:
+    def __init__(self, store: SessionStore, logger: BridgeLogger | None = None) -> None:
         self._store = store
+        self._logger = logger or BridgeLogger()
 
     async def handle_envelope(self, envelope: dict[str, Any]) -> dict[str, Any]:
         request_id = str(envelope.get("request_id", ""))
+        command_name = "unknown"
         try:
             command_name, payload = decode_command(envelope.get("command"))
-            response = await self._handle_command(command_name, payload)
+            self._logger.log(
+                "bridge.command_received",
+                request_id=request_id,
+                command=command_name,
+            )
+            response = await self._handle_command(command_name, payload, request_id)
         except Exception as exc:  # pragma: no cover - defensive transport guard
+            self._logger.log(
+                "bridge.command_error",
+                request_id=request_id,
+                command=command_name,
+                error=str(exc),
+            )
             response = {"error": {"message": str(exc)}}
         return {"request_id": request_id, "response": response}
 
     async def _handle_command(
-        self, command_name: str, payload: dict[str, Any]
+        self, command_name: str, payload: dict[str, Any], request_id: str
     ) -> dict[str, Any] | str:
         if command_name == "ping":
             return "pong"
@@ -150,38 +219,58 @@ class BridgeController:
             instance_id = str(payload["instance_id"])
             sessions = await self._store.list_sessions()
             sender = find_sender_session(sessions, instance_id)
-            summaries = [
-                session_picker_summary(session)
-                for session in sessions
-                if session.session_id != sender.session_id
-                and not session_is_live_grove(session)
-            ]
+            self._logger.log(
+                "bridge.sender_resolved",
+                request_id=request_id,
+                command=command_name,
+                instance_id=instance_id,
+                session_id=sender.session_id,
+            )
+            summaries: list[dict[str, Any]] = []
+            for session in sessions:
+                include, reason = picker_visibility_decision(session, sender)
+                if self._logger.log_session_lists:
+                    self._logger.log(
+                        "bridge.list_sessions_decision",
+                        request_id=request_id,
+                        session_id=session.session_id,
+                        decision="include" if include else "exclude",
+                        reason=reason,
+                    )
+                if include:
+                    summaries.append(session_picker_summary(session))
             return {"session_list": summaries}
 
         if command_name == "set_role":
             session_id = str(payload["session_id"])
             role = validate_role(payload["role"])
-            await self._set_role(session_id, role)
+            await self._set_role(session_id, role, request_id)
             return "pong"
 
         if command_name == "clear_role":
-            await self._store.clear_role(str(payload["session_id"]))
+            session_id = str(payload["session_id"])
+            await self._store.clear_role(session_id)
+            self._logger.log(
+                "bridge.clear_role",
+                request_id=request_id,
+                session_id=session_id,
+            )
             return "pong"
 
         if command_name == "resolve_targets":
             instance_id = str(payload["instance_id"])
-            resolution = await self._resolve_targets(instance_id)
+            resolution = await self._resolve_targets(instance_id, request_id)
             return {"targets_resolved": resolution}
 
         if command_name == "send_text":
-            return await self._send_text(payload)
+            return await self._send_text(payload, request_id)
 
         if command_name == "get_session_snapshot":
             return {"error": {"message": "get_session_snapshot is not implemented"}}
 
         return {"error": {"message": f"unsupported bridge command: {command_name}"}}
 
-    async def _set_role(self, session_id: str, role: str) -> None:
+    async def _set_role(self, session_id: str, role: str, request_id: str) -> None:
         sessions = await self._store.list_sessions()
         target = find_session_by_id(sessions, session_id)
         window_id = (
@@ -189,6 +278,7 @@ class BridgeController:
             if target.location_hint and target.location_hint.window_id
             else None
         )
+        cleared_session_ids: list[str] = []
         if window_id is not None:
             for session in sessions:
                 if (
@@ -198,11 +288,26 @@ class BridgeController:
                     and session.location_hint.window_id == window_id
                 ):
                     await self._store.clear_role(session.session_id)
+                    cleared_session_ids.append(session.session_id)
         await self._store.set_role(session_id, role)
+        self._logger.log(
+            "bridge.set_role",
+            request_id=request_id,
+            session_id=session_id,
+            role=role,
+            cleared_session_ids=cleared_session_ids,
+        )
 
-    async def _resolve_targets(self, instance_id: str) -> dict[str, Any]:
+    async def _resolve_targets(self, instance_id: str, request_id: str) -> dict[str, Any]:
         sessions = await self._store.list_sessions()
         sender = find_sender_session(sessions, instance_id)
+        self._logger.log(
+            "bridge.sender_resolved",
+            request_id=request_id,
+            command="resolve_targets",
+            instance_id=instance_id,
+            session_id=sender.session_id,
+        )
 
         ai_target, ai_source = resolve_role_target(sessions, sender, ROLE_AI)
         editor_target, editor_source = resolve_role_target(sessions, sender, ROLE_EDITOR)
@@ -211,13 +316,21 @@ class BridgeController:
         if ai_source == "same_window" or editor_source == "same_window":
             source = "same_window"
 
-        return {
+        resolution = {
             "ai_target_session_id": ai_target.session_id if ai_target else None,
             "editor_target_session_id": editor_target.session_id if editor_target else None,
             "source": source,
         }
+        self._logger.log(
+            "bridge.resolve_targets",
+            request_id=request_id,
+            ai_target_session_id=resolution["ai_target_session_id"],
+            editor_target_session_id=resolution["editor_target_session_id"],
+            source=source,
+        )
+        return resolution
 
-    async def _send_text(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def _send_text(self, payload: dict[str, Any], request_id: str) -> dict[str, Any]:
         instance_id = str(payload["instance_id"])
         target = payload["target"]
         text = str(payload["text"])
@@ -226,12 +339,25 @@ class BridgeController:
 
         sessions = await self._store.list_sessions()
         sender = find_sender_session(sessions, instance_id)
+        self._logger.log(
+            "bridge.sender_resolved",
+            request_id=request_id,
+            command="send_text",
+            instance_id=instance_id,
+            session_id=sender.session_id,
+        )
         target_session: BridgeSession | None = None
 
         if isinstance(target, dict) and "role" in target:
             role = validate_role(target["role"])
             target_session, _ = resolve_role_target(sessions, sender, role)
             if target_session is None:
+                self._logger.log(
+                    "bridge.send_text_manual_selection_required",
+                    request_id=request_id,
+                    role=role,
+                    text_length=len(text),
+                )
                 return {"manual_selection_required": {"role": role}}
         elif isinstance(target, dict) and "session_id" in target:
             target_session = find_session_by_id(sessions, str(target["session_id"]))
@@ -239,6 +365,12 @@ class BridgeController:
             raise ValueError("send_text target must be a role or session_id object")
 
         await self._store.send_text(target_session.session_id, text)
+        self._logger.log(
+            "bridge.send_text",
+            request_id=request_id,
+            target_session_id=target_session.session_id,
+            text_length=len(text),
+        )
         return {"send_ok": {"target_session_id": target_session.session_id}}
 
 
@@ -351,6 +483,49 @@ def default_socket_path() -> Path:
     return tmp_root / f"grove-bridge-{os.getuid()}.sock"
 
 
+def default_bridge_debug_config_path() -> Path:
+    return Path.home() / BRIDGE_DEBUG_CONFIG_RELATIVE_PATH
+
+
+def load_bridge_debug_config(config_path: Path | None = None) -> BridgeDebugConfig | None:
+    resolved_path = config_path or default_bridge_debug_config_path()
+    if not resolved_path.exists():
+        return None
+    data = json.loads(resolved_path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("bridge debug config must be a JSON object")
+    log_path = data.get("path")
+    if not isinstance(log_path, str) or not log_path.strip():
+        raise ValueError("bridge debug config requires a non-empty string path")
+    log_session_lists = data.get("log_session_lists", True)
+    if not isinstance(log_session_lists, bool):
+        raise ValueError("bridge debug config log_session_lists must be a boolean")
+    return BridgeDebugConfig(
+        path=Path(log_path).expanduser(),
+        log_session_lists=log_session_lists,
+    )
+
+
+def build_bridge_logger(config_path: Path | None = None) -> BridgeLogger:
+    resolved_path = config_path or default_bridge_debug_config_path()
+    try:
+        config = load_bridge_debug_config(resolved_path)
+    except ValueError as exc:
+        raise SystemExit(
+            f"invalid Grove bridge debug config at {resolved_path}: {exc}"
+        ) from exc
+    logger = BridgeLogger(config)
+    if logger.enabled:
+        assert logger.path is not None
+        logger.log(
+            "bridge.config_loaded",
+            config_path=str(resolved_path),
+            log_path=str(logger.path),
+            log_session_lists=logger.log_session_lists,
+        )
+    return logger
+
+
 def decode_command(command: Any) -> tuple[str, dict[str, Any]]:
     if isinstance(command, str):
         return command, {}
@@ -393,6 +568,18 @@ def session_picker_summary(session: BridgeSession) -> dict[str, Any]:
     if session_has_stale_grove_target_markers(session):
         summary["role"] = None
     return summary
+
+
+def picker_visibility_decision(
+    session: BridgeSession, sender: BridgeSession
+) -> tuple[bool, str]:
+    if session.session_id == sender.session_id:
+        return False, "sender_session"
+    if session_is_live_grove(session):
+        return False, "live_grove_session"
+    if session_has_stale_grove_target_markers(session):
+        return True, "stale_grove_target_markers"
+    return True, "eligible_session"
 
 
 def session_is_live_grove(session: BridgeSession) -> bool:
@@ -467,11 +654,22 @@ async def safe_session_title(session: Any) -> str | None:
     return await safe_async_get_variable(session, "name")
 
 
+def current_timestamp_ms() -> int:
+    return time.time_ns() // 1_000_000
+
+
 async def main(connection: Any) -> None:  # pragma: no cover - exercised in iTerm2
-    controller = BridgeController(Iterm2SessionStore(connection))
+    logger = build_bridge_logger()
+    controller = BridgeController(Iterm2SessionStore(connection), logger=logger)
     server = GroveBridgeServer(controller)
-    await server.start()
-    await asyncio.Future()
+    try:
+        await server.start()
+        logger.log("bridge.startup", socket_path=str(server.socket_path))
+        await asyncio.Future()
+    finally:
+        logger.log("bridge.shutdown", socket_path=str(server.socket_path))
+        logger.close()
+        await server.close()
 
 
 if __name__ == "__main__":  # pragma: no cover - exercised manually in iTerm2

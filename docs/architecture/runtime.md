@@ -133,6 +133,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - `src/bootstrap.rs` emits inline preview images through an iTerm2-only post-draw overlay path after ratatui finishes the normal preview frame, and the same overlay seam now serves both Mermaid diagrams and static image previews
 - `src/bootstrap.rs` reconciles watcher roots again after watcher-driven root changes so removed or recovered tabs do not stay registered for another tick
 - `src/debug_log.rs` appends timestamped file logs when `GROVE_DEBUG_LOG` is set, and the current probes cover visibility rebuilds, path-index polling, and render timing
+- `bridge/grove_bridge.py` has its own opt-in JSONL debug logger configured through `~/.config/grove/bridge-debug.json`; it is separate from the Rust `GROVE_DEBUG_LOG` path and is read once at bridge startup
 
 ## Current Bridge Semantics
 
@@ -140,6 +141,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - the development launcher lives at `scripts/run_bridge_dev.sh`
 - the Rust bridge client speaks newline-delimited JSON over a Unix socket at `$TMPDIR/grove-bridge-<uid>.sock`
 - Grove tags its own pane with `user.groveRole=grove` and a generated `user.groveInstance=<instance_id>` at startup
+- when `~/.config/grove/bridge-debug.json` exists, the bridge appends structured JSONL events for command receipt, sender resolution, `list_sessions` inclusion decisions, target resolution, role assignment, and send-text routing; full text payload bodies are intentionally omitted
 - bridge target resolution is explicit and ordered:
   1. same tab
   2. same window

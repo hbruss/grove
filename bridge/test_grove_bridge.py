@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 import unittest
 
@@ -499,6 +502,149 @@ class BridgeControllerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([session.session_id for session in sessions], ["visible-1", "minimized-1"])
         self.assertEqual(sessions[1].location_hint.tab_id, "tab-1")
         self.assertEqual(sessions[1].location_hint.tab_title, "Workspace")
+
+    async def test_list_sessions_logs_inclusion_decisions(self):
+        store = InMemorySessionStore(
+            [
+                BridgeSession(
+                    session_id="grove",
+                    title="Grove",
+                    role="grove",
+                    job_name="zsh",
+                    command_line="-zsh",
+                    instance_id="instance-1",
+                    location_hint=SessionLocationHint(window_id="window-1", tab_id="tab-1"),
+                ),
+                BridgeSession(
+                    session_id="stale-grove",
+                    title="Primary (codex)",
+                    role="grove",
+                    job_name="codex",
+                    command_line="codex",
+                    cwd="/repo",
+                    instance_id="old-instance",
+                    location_hint=SessionLocationHint(window_id="window-1", tab_id="tab-1"),
+                ),
+                BridgeSession(
+                    session_id="other-grove",
+                    title="Primary (zsh)",
+                    role="grove",
+                    job_name="zsh",
+                    command_line="-zsh",
+                    cwd="/repo",
+                    instance_id="instance-2",
+                    location_hint=SessionLocationHint(window_id="window-1", tab_id="tab-2"),
+                ),
+                BridgeSession(
+                    session_id="ai-1",
+                    title="Claude",
+                    role="ai",
+                    job_name="claude-code",
+                    command_line="claude",
+                    cwd="/repo",
+                    location_hint=SessionLocationHint(window_id="window-1", tab_id="tab-2"),
+                ),
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            logger = grove_bridge.BridgeLogger(
+                grove_bridge.BridgeDebugConfig(path=Path(tmp_dir) / "bridge.log")
+            )
+            controller = BridgeController(store, logger=logger)
+            try:
+                response = await controller.handle_envelope(
+                    {
+                        "request_id": "req-log",
+                        "command": {"list_sessions": {"instance_id": "instance-1"}},
+                    }
+                )
+            finally:
+                logger.close()
+
+            events = [
+                json.loads(line)
+                for line in (Path(tmp_dir) / "bridge.log").read_text(encoding="utf-8").splitlines()
+            ]
+
+        self.assertEqual(response["request_id"], "req-log")
+        self.assertEqual(response["response"]["session_list"][0]["session_id"], "stale-grove")
+        self.assertEqual(response["response"]["session_list"][1]["session_id"], "ai-1")
+
+        normalized_events = [
+            {key: value for key, value in event.items() if key != "ts_ms"} for event in events
+        ]
+        self.assertIn(
+            {
+                "event": "bridge.command_received",
+                "request_id": "req-log",
+                "command": "list_sessions",
+            },
+            normalized_events,
+        )
+        self.assertIn(
+            {
+                "event": "bridge.sender_resolved",
+                "request_id": "req-log",
+                "command": "list_sessions",
+                "instance_id": "instance-1",
+                "session_id": "grove",
+            },
+            normalized_events,
+        )
+        self.assertIn(
+            {
+                "event": "bridge.list_sessions_decision",
+                "request_id": "req-log",
+                "session_id": "stale-grove",
+                "decision": "include",
+                "reason": "stale_grove_target_markers",
+            },
+            normalized_events,
+        )
+        self.assertIn(
+            {
+                "event": "bridge.list_sessions_decision",
+                "request_id": "req-log",
+                "session_id": "other-grove",
+                "decision": "exclude",
+                "reason": "live_grove_session",
+            },
+            normalized_events,
+        )
+        self.assertIn(
+            {
+                "event": "bridge.list_sessions_decision",
+                "request_id": "req-log",
+                "session_id": "ai-1",
+                "decision": "include",
+                "reason": "eligible_session",
+            },
+            normalized_events,
+        )
+
+
+class BridgeLoggingTests(unittest.TestCase):
+    def test_load_bridge_debug_config_returns_none_for_missing_file(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = grove_bridge.load_bridge_debug_config(
+                Path(tmp_dir) / "missing-bridge-debug.json"
+            )
+
+        self.assertIsNone(config)
+
+    def test_load_bridge_debug_config_returns_enabled_config_for_valid_file(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "bridge-debug.json"
+            log_path = Path(tmp_dir) / "bridge.log"
+            config_path.write_text(
+                json.dumps({"path": str(log_path), "log_session_lists": True}),
+                encoding="utf-8",
+            )
+
+            config = grove_bridge.load_bridge_debug_config(config_path)
+
+        self.assertEqual(config.path, log_path)
+        self.assertTrue(config.log_session_lists)
 
 
 if __name__ == "__main__":
