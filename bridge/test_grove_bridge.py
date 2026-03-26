@@ -123,7 +123,7 @@ class BridgeControllerTests(unittest.IsolatedAsyncioTestCase):
             },
         )
 
-    async def test_list_sessions_keeps_non_sender_sessions_with_stale_grove_role(self):
+    async def test_list_sessions_hides_live_grove_sessions_but_keeps_stale_grove_tagged_codex(self):
         store = InMemorySessionStore(
             [
                 BridgeSession(
@@ -144,6 +144,21 @@ class BridgeControllerTests(unittest.IsolatedAsyncioTestCase):
                     location_hint=SessionLocationHint(
                         window_id="window-1",
                         tab_id="tab-1",
+                        window_title="Workspace",
+                        tab_title="Primary",
+                    ),
+                ),
+                BridgeSession(
+                    session_id="other-grove",
+                    title="Primary (zsh)",
+                    role="grove",
+                    job_name="zsh",
+                    command_line="-zsh",
+                    cwd="/repo",
+                    instance_id="instance-2",
+                    location_hint=SessionLocationHint(
+                        window_id="window-1",
+                        tab_id="tab-2",
                         window_title="Workspace",
                         tab_title="Primary",
                     ),
@@ -179,7 +194,7 @@ class BridgeControllerTests(unittest.IsolatedAsyncioTestCase):
                         {
                             "session_id": "stale-grove",
                             "title": "Primary (codex)",
-                            "role": "grove",
+                            "role": None,
                             "job_name": "codex",
                             "command_line": "codex",
                             "cwd": "/repo",

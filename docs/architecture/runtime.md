@@ -147,7 +147,7 @@ Phase 1 tree navigation, three Phase 2 slices, five Phase 3 runtime/preview slic
 - heuristic target guessing is not implemented in the current slice
 - AI and editor targets are tracked separately in runtime state
 - the editor target picker prepends a synthetic `Current pane` row above bridge session rows, while the AI picker remains session-only
-- bridge session listing excludes only the current Grove sender session from the manual picker instead of dropping every session that still carries a historical `grove` role tag
+- bridge session listing excludes live Grove panes from the manual picker, but repurposed panes that still carry a stale `grove` tag and now look like AI/editor tools are kept visible and rendered as unassigned choices
 - picker rows show either `Current pane` for the local editor path or session title, role, job name, and window/tab location hints for bridge-backed targets
 - bridge session enumeration includes both visible and minimized iTerm2 tab sessions so maximized-pane tabs still expose their hidden targets in the picker
 - bridge target assignment currently acknowledges success through the generic bridge `Pong` response

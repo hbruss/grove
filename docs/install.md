@@ -25,7 +25,7 @@ Install a specific tagged release:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.5
+  https://raw.githubusercontent.com/hbruss/grove/main/scripts/install.sh | sh -s -- --version v0.1.6
 ```
 
 Run the installer non-interactively with the default answers (`Yes` for bridge wiring, `No` for Mermaid helper setup, and `No` for PATH profile setup):

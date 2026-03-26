@@ -19,6 +19,17 @@ ROLE_GROVE = "grove"
 ROLE_AI = "ai"
 ROLE_EDITOR = "editor"
 VALID_ROLES = {ROLE_GROVE, ROLE_AI, ROLE_EDITOR}
+PICKER_TARGET_MARKERS = (
+    "aider",
+    "claude",
+    "claude-code",
+    "codex",
+    "helix",
+    "hx",
+    "nvim",
+    "vim",
+    "zed",
+)
 
 
 @dataclass
@@ -140,9 +151,10 @@ class BridgeController:
             sessions = await self._store.list_sessions()
             sender = find_sender_session(sessions, instance_id)
             summaries = [
-                session.to_summary()
+                session_picker_summary(session)
                 for session in sessions
                 if session.session_id != sender.session_id
+                and not session_is_live_grove(session)
             ]
             return {"session_list": summaries}
 
@@ -374,6 +386,41 @@ def find_sender_session(
         if session.instance_id == instance_id:
             return session
     raise ValueError(f"unable to find grove session for instance_id: {instance_id}")
+
+
+def session_picker_summary(session: BridgeSession) -> dict[str, Any]:
+    summary = session.to_summary()
+    if session_has_stale_grove_target_markers(session):
+        summary["role"] = None
+    return summary
+
+
+def session_is_live_grove(session: BridgeSession) -> bool:
+    return (
+        session.normalized_role() == ROLE_GROVE
+        and not session_has_stale_grove_target_markers(session)
+    )
+
+
+def session_has_stale_grove_target_markers(session: BridgeSession) -> bool:
+    if session.normalized_role() != ROLE_GROVE:
+        return False
+    return session_fields_contain_any_marker(
+        (session.job_name, session.command_line),
+        PICKER_TARGET_MARKERS,
+    )
+
+
+def session_fields_contain_any_marker(
+    values: tuple[str | None, ...], markers: tuple[str, ...]
+) -> bool:
+    for value in values:
+        if value is None:
+            continue
+        lowered = value.lower()
+        if any(marker in lowered for marker in markers):
+            return True
+    return False
 
 
 def resolve_role_target(
