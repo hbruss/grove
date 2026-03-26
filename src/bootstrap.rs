@@ -2083,10 +2083,15 @@ where
         .collect::<Vec<_>>()
         .join("\n");
 
-    let response = (hooks.send_text)(app, SendTarget::Role(TargetRole::Ai), payload, false)?;
+    let response = (hooks.send_text)(
+        app,
+        preferred_send_target(app, TargetRole::Ai),
+        payload,
+        false,
+    )?;
     match response {
         BridgeResponse::SendOk { target_session_id } => {
-            app.bridge.ai_target_session_id = Some(target_session_id.clone());
+            remember_preferred_target_session(app, TargetRole::Ai, target_session_id.clone());
             let target_label = app.bridge_target_label(TargetRole::Ai);
             app.status.severity = StatusSeverity::Success;
             app.status.message = if relative_paths.len() == 1 {
@@ -2098,6 +2103,9 @@ where
                 )
             };
             Ok(true)
+        }
+        BridgeResponse::TargetSessionUnavailable { session_id } => {
+            handle_unavailable_preferred_target_session(app, TargetRole::Ai, session_id, hooks)
         }
         BridgeResponse::ManualSelectionRequired { role } => open_target_picker(app, role, hooks),
         BridgeResponse::Error { message } => {
@@ -2442,6 +2450,56 @@ fn target_role_label(role: TargetRole) -> &'static str {
     }
 }
 
+fn preferred_target_session_id(app: &App, role: TargetRole) -> Option<&String> {
+    match role {
+        TargetRole::Ai => app.bridge.ai_target_session_id.as_ref(),
+        TargetRole::Editor => app.bridge.editor_target_session_id.as_ref(),
+        TargetRole::Grove => None,
+    }
+}
+
+fn preferred_send_target(app: &App, role: TargetRole) -> SendTarget {
+    preferred_target_session_id(app, role)
+        .cloned()
+        .map(SendTarget::SessionId)
+        .unwrap_or(SendTarget::Role(role))
+}
+
+fn remember_preferred_target_session(app: &mut App, role: TargetRole, session_id: String) {
+    match role {
+        TargetRole::Ai => app.bridge.ai_target_session_id = Some(session_id),
+        TargetRole::Editor => app.bridge.editor_target_session_id = Some(session_id),
+        TargetRole::Grove => {}
+    }
+}
+
+fn clear_preferred_target_session(app: &mut App, role: TargetRole) {
+    match role {
+        TargetRole::Ai => app.bridge.ai_target_session_id = None,
+        TargetRole::Editor => app.bridge.editor_target_session_id = None,
+        TargetRole::Grove => {}
+    }
+}
+
+fn handle_unavailable_preferred_target_session<B: Backend>(
+    app: &mut App,
+    role: TargetRole,
+    session_id: String,
+    hooks: &RuntimeActionHooks<B>,
+) -> Result<bool>
+where
+    B::Error: Display,
+{
+    clear_preferred_target_session(app, role);
+    app.status.severity = StatusSeverity::Warning;
+    app.status.message = format!(
+        "{} target {} is no longer available; choose a new target",
+        target_role_label(role),
+        session_id
+    );
+    open_target_picker(app, role, hooks)
+}
+
 fn sync_selected_row_visibility<B: Backend>(terminal: &Terminal<B>, app: &mut App) -> Result<()>
 where
     B::Error: Display,
@@ -2654,15 +2712,35 @@ fn production_open_in_editor(
         crate::open::ResolvedEditorOpen::ShellTarget(command_line) => {
             match production_send_text(
                 app,
-                SendTarget::Role(TargetRole::Editor),
+                preferred_send_target(app, TargetRole::Editor),
                 command_line,
                 true,
             )? {
                 BridgeResponse::SendOk { target_session_id } => {
-                    app.bridge.editor_target_session_id = Some(target_session_id.clone());
+                    remember_preferred_target_session(
+                        app,
+                        TargetRole::Editor,
+                        target_session_id.clone(),
+                    );
                     let target_label = app.bridge_target_label(TargetRole::Editor);
                     app.status.severity = StatusSeverity::Success;
                     app.status.message = format!("sent editor open to {target_label}");
+                }
+                BridgeResponse::TargetSessionUnavailable { session_id } => {
+                    return handle_unavailable_preferred_target_session(
+                        app,
+                        TargetRole::Editor,
+                        session_id,
+                        &RuntimeActionHooks {
+                            open_in_editor: production_open_in_editor,
+                            open_externally: production_open_externally,
+                            reveal_in_file_manager: production_reveal_in_file_manager,
+                            initialize_bridge: production_initialize_bridge,
+                            list_sessions: production_list_sessions,
+                            send_text: production_send_text,
+                            set_role: production_set_role,
+                        },
+                    );
                 }
                 BridgeResponse::ManualSelectionRequired { role } => {
                     return open_target_picker(

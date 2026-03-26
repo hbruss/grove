@@ -2161,6 +2161,87 @@ fn runtime_ctrl_y_sends_selected_relative_path_to_ai_target() {
 }
 
 #[test]
+fn runtime_ctrl_y_uses_explicit_ai_target_session_binding() {
+    let root = make_temp_dir("grove-bootstrap-send-relative-path-explicit-ai-target");
+    fs::write(root.join("note.txt"), "hello from file\n").expect("should create note.txt");
+
+    let backend = TestBackend::new(120, 36);
+    let mut terminal = Terminal::new(backend).expect("test terminal should build");
+    let mut input = Cursor::new(vec![0x1b, b'[', b'B', 0x19]);
+    let mut app = App::default();
+    app.tabs[0] = TabState::new(root.clone());
+    app.tabs[0].path_index.receiver = None;
+    app.tabs[0].path_index.status = grove::app::PathIndexStatus::Ready;
+    app.bridge.ai_target_session_id = Some("bound-ai-session".to_string());
+
+    let result = bootstrap::run_with_terminal_and_reader_and_hooks(
+        &mut terminal,
+        &mut input,
+        &mut app,
+        bootstrap::RuntimeActionHooks {
+            open_in_editor: mark_editor_open,
+            open_externally: ignore_external_open,
+            reveal_in_file_manager: ignore_external_open,
+            initialize_bridge: mark_bridge_initialized,
+            list_sessions: list_target_sessions,
+            send_text: send_relative_path_to_explicit_ai_session_ok,
+            set_role: ignore_set_role,
+        },
+    );
+    assert!(result.is_ok());
+    assert_eq!(
+        app.bridge.ai_target_session_id.as_deref(),
+        Some("bound-ai-session")
+    );
+    assert_eq!(app.status.message, "sent relative path to bound-ai-session");
+
+    fs::remove_dir_all(root).expect("temp root should be removed");
+}
+
+#[test]
+fn runtime_ctrl_y_clears_stale_explicit_ai_target_and_reopens_picker() {
+    let root = make_temp_dir("grove-bootstrap-send-relative-path-stale-ai-target");
+    fs::write(root.join("note.txt"), "hello from file\n").expect("should create note.txt");
+
+    let backend = TestBackend::new(120, 36);
+    let mut terminal = Terminal::new(backend).expect("test terminal should build");
+    let mut input = Cursor::new(vec![0x1b, b'[', b'B', 0x19]);
+    let mut app = App::default();
+    app.tabs[0] = TabState::new(root.clone());
+    app.tabs[0].path_index.receiver = None;
+    app.tabs[0].path_index.status = grove::app::PathIndexStatus::Ready;
+    app.bridge.ai_target_session_id = Some("stale-ai-session".to_string());
+
+    let result = bootstrap::run_with_terminal_and_reader_and_hooks(
+        &mut terminal,
+        &mut input,
+        &mut app,
+        bootstrap::RuntimeActionHooks {
+            open_in_editor: mark_editor_open,
+            open_externally: ignore_external_open,
+            reveal_in_file_manager: ignore_external_open,
+            initialize_bridge: mark_bridge_initialized,
+            list_sessions: list_target_sessions,
+            send_text: send_explicit_ai_target_unavailable,
+            set_role: ignore_set_role,
+        },
+    );
+    assert!(result.is_ok());
+    assert_eq!(app.bridge.ai_target_session_id, None);
+    assert_eq!(app.focus, Focus::Dialog);
+    assert_eq!(
+        app.target_picker_state().map(|picker| picker.role),
+        Some(TargetRole::Ai)
+    );
+    assert_eq!(
+        app.status.message,
+        "ai target stale-ai-session is no longer available; choose a new target"
+    );
+
+    fs::remove_dir_all(root).expect("temp root should be removed");
+}
+
+#[test]
 fn runtime_ctrl_y_sends_multi_select_paths_as_newline_separated_payload() {
     let _guard = send_capture_lock()
         .lock()
@@ -3194,8 +3275,7 @@ fn runtime_v_hides_preview_keeps_metadata_visible_and_returns_focus_to_tree() {
 #[test]
 fn runtime_hidden_preview_layout_lets_tree_span_full_body_width() {
     let root = make_temp_dir("grove-bootstrap-preview-width");
-    let long_name =
-        "alpha-preview-width-expansion-marker-visible-only-when-tree-spans-wide.txt";
+    let long_name = "alpha-preview-width-expansion-marker-visible-only-when-tree-spans-wide.txt";
     fs::write(root.join(long_name), "wide\n").expect("should create wide-name file");
 
     let backend = TestBackend::new(120, 36);
@@ -4674,6 +4754,40 @@ fn send_relative_path_ok(
     assert!(!append_newline);
     Ok(BridgeResponse::SendOk {
         target_session_id: "ai-session".to_string(),
+    })
+}
+
+fn send_relative_path_to_explicit_ai_session_ok(
+    _app: &mut App,
+    target: SendTarget,
+    text: String,
+    append_newline: bool,
+) -> grove::error::Result<BridgeResponse> {
+    assert_eq!(
+        target,
+        SendTarget::SessionId("bound-ai-session".to_string())
+    );
+    assert_eq!(text, "note.txt");
+    assert!(!append_newline);
+    Ok(BridgeResponse::SendOk {
+        target_session_id: "bound-ai-session".to_string(),
+    })
+}
+
+fn send_explicit_ai_target_unavailable(
+    _app: &mut App,
+    target: SendTarget,
+    text: String,
+    append_newline: bool,
+) -> grove::error::Result<BridgeResponse> {
+    assert_eq!(
+        target,
+        SendTarget::SessionId("stale-ai-session".to_string())
+    );
+    assert_eq!(text, "note.txt");
+    assert!(!append_newline);
+    Ok(BridgeResponse::TargetSessionUnavailable {
+        session_id: "stale-ai-session".to_string(),
     })
 }
 

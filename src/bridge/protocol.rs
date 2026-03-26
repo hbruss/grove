@@ -96,6 +96,7 @@ pub enum BridgeResponse {
     SessionList(Vec<SessionSummary>),
     TargetsResolved(TargetResolution),
     ManualSelectionRequired { role: TargetRole },
+    TargetSessionUnavailable { session_id: String },
     SendOk { target_session_id: String },
     Error { message: String },
 }

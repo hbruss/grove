@@ -364,6 +364,47 @@ class BridgeControllerTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(store.sent_text, [])
 
+    async def test_send_text_returns_target_session_unavailable_for_missing_direct_session(self):
+        store = InMemorySessionStore(
+            [
+                BridgeSession(
+                    session_id="grove",
+                    title="Grove",
+                    role="grove",
+                    instance_id="instance-1",
+                    location_hint=SessionLocationHint(window_id="window-1", tab_id="tab-1"),
+                )
+            ]
+        )
+        controller = BridgeController(store)
+
+        response = await controller.handle_envelope(
+            {
+                "request_id": "req-4b",
+                "command": {
+                    "send_text": {
+                        "instance_id": "instance-1",
+                        "target": {"session_id": "missing-session"},
+                        "text": "src/lib.rs",
+                        "append_newline": False,
+                    }
+                },
+            }
+        )
+
+        self.assertEqual(
+            response,
+            {
+                "request_id": "req-4b",
+                "response": {
+                    "target_session_unavailable": {
+                        "session_id": "missing-session",
+                    }
+                },
+            },
+        )
+        self.assertEqual(store.sent_text, [])
+
     async def test_iterm2_session_store_send_text_suppresses_broadcast(self):
         class FakeSession:
             def __init__(self) -> None:

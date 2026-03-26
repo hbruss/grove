@@ -360,7 +360,21 @@ class BridgeController:
                 )
                 return {"manual_selection_required": {"role": role}}
         elif isinstance(target, dict) and "session_id" in target:
-            target_session = find_session_by_id(sessions, str(target["session_id"]))
+            target_session_id = str(target["session_id"])
+            try:
+                target_session = find_session_by_id(sessions, target_session_id)
+            except ValueError:
+                self._logger.log(
+                    "bridge.send_text_target_session_unavailable",
+                    request_id=request_id,
+                    session_id=target_session_id,
+                    text_length=len(text),
+                )
+                return {
+                    "target_session_unavailable": {
+                        "session_id": target_session_id,
+                    }
+                }
         else:
             raise ValueError("send_text target must be a role or session_id object")
 

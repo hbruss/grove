@@ -102,6 +102,13 @@ fn core_contracts_compile_and_serialize() {
         serde_json::to_string(&manual_selection).expect("manual selection should serialize");
     assert!(manual_selection_json.contains("\"manual_selection_required\""));
 
+    let unavailable = BridgeResponse::TargetSessionUnavailable {
+        session_id: "session-1".to_string(),
+    };
+    let unavailable_json =
+        serde_json::to_string(&unavailable).expect("unavailable response should serialize");
+    assert!(unavailable_json.contains("\"target_session_unavailable\""));
+
     let persisted = PersistedState {
         tabs: vec![PersistedTabState {
             root: "repo".into(),
